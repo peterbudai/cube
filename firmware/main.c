@@ -2,32 +2,9 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-#include "../shared/led.h"
-#include "../shared/reset.h"
-#include "../shared/usart.h"
-
-#define ROWH_PORT PORTD
-#define ROWH_MASK ((1 << PORTD7) | (1 << PORTD6) | (1 << PORTD5) | (1 << PORTD4))
-#define ROWL_PORT PORTC
-#define ROWL_MASK ((1 << PORTC3) | (1 << PORTC2) | (1 << PORTC1) | (1 << PORTC0))
-#define ENABLE_PORT PORTD
-#define ENABLE_BIT (1 << PORTD3)
-#define SHIFT_PORT PORTC
-#define SHIFT_BIT (1 << PORTC4)
-#define STORE_PORT PORTC
-#define STORE_BIT (1 << PORTC5)
-#define LAYER_PORT PORTB
-#define LAYER_MASK ((1 << PORTB2) | (1 << PORTB1) | (1 << PORTB0))
-
-#define enable_off() ENABLE_PORT |= ENABLE_BIT
-#define enable_on() ENABLE_PORT &= ~ENABLE_BIT
-#define layer_select(l) LAYER_PORT = (LAYER_PORT & ~(LAYER_MASK)) | (l & LAYER_MASK)
-#define shift() \
-	SHIFT_PORT |= SHIFT_BIT; \
-	SHIFT_PORT &= ~(SHIFT_BIT)
-#define store() \
-	STORE_PORT |= STORE_BIT; \
-	STORE_PORT &= ~(STORE_BIT)
+#include "ports.h"
+#include "reset.h"
+#include "usart.h"
 
 void output_frame(uint8_t* frame) {
 	for(uint8_t l = 0; l < 8; l++) {
@@ -90,6 +67,4 @@ int main()
 		}
 		m = (m >= 2) ? 0 : (m + 1);
 	}
-
-	reset(RESET_TO_BOOT_CODE);
 }

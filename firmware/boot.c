@@ -6,46 +6,17 @@
 #include <avr/wdt.h>
 #include <util/delay.h>
 
-#include "../shared/led.h"
-#include "../shared/reset.h"
-#include "../shared/usart.h"
+#include "ports.h"
+#include "reset.h"
+#include "usart.h"
 
+/*
 #define SIGRD 5
 #define USART_TIMEOUT_TICKS (F_CPU >> 4)
 
-void handle_reset() __attribute__ ((naked)) __attribute__ ((section (".init3")));
 void usart_send(uint8_t data);
 uint8_t usart_recv_timeout();
 
-/**
- * Code that runs early after reset.
- * Sets reset logic into default state, and behaves according to the reset condition.
- */
-void handle_reset() {
-	uint8_t reason = MCUSR;
-	MCUSR = 0;
-	wdt_disable();
-	cli();
-
-	// This register will store the reset destination in case of watchdog reset
-	register uint8_t dest asm("r15");
-
-	// Read the reset destination
-	if((reason & (1 << WDRF)) && (dest == RESET_TO_APP_CODE)) {
-		// Jump to application code if requested
-		int (*app_main)() = 0x0000;
-		app_main();
-	}
-
-	// Move interrupt vectors to boot section, just to be sure
-	uint8_t ctrl = MCUCR;
-	MCUCR = ctrl | (1 << IVCE);
-	MCUCR = ctrl | (1 << IVSEL);
-}
-
-/**
- * Main application logic.
- */
 int main()
 {
 	// Init LED output and blink once
@@ -103,4 +74,4 @@ uint8_t usart_recv_timeout() {
 	led_on();
 	return UDR0;
 }
-
+*/
