@@ -24,10 +24,9 @@
 #define FRAME_REPEAT 5
 #define FRAME_PER_SECOND 25
 
-uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT];
+uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT] __attribute__ ((section (".noinit")));
 
 // Macros for dealing with output ports
-
 #define enable_off() ENABLE_PORT |= ENABLE_BIT
 #define enable_on() ENABLE_PORT &= ~ENABLE_BIT
 
@@ -44,10 +43,10 @@ uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT];
 #define frame_address(f) (frame_buffer + (f) * CUBE_FRAME_SIZE)
 #define frame_next(f) ((f) >= CUBE_FRAME_BUFFER_COUNT - 1 ? 0 : (f) + 1)
 	
-uint8_t current_layer;		// 0..7
-uint8_t current_repeat;		// 0..FRAME_REPEAT
-uint8_t current_frame;		// 0..CUBE_FRAME_BUFFER_COUNT
-uint8_t edited_frame;		// 0..CUBE_FRAME_BUFFER_COUNT
+uint8_t current_layer __attribute__ ((section (".noinit")));		// 0..7
+uint8_t current_repeat __attribute__ ((section (".noinit")));		// 0..FRAME_REPEAT
+uint8_t current_frame __attribute__ ((section (".noinit")));		// 0..CUBE_FRAME_BUFFER_COUNT
+uint8_t edited_frame __attribute__ ((section (".noinit")));			// 0..CUBE_FRAME_BUFFER_COUNT
 
 ISR(TIMER0_COMPA_vect) {
 	uint8_t* layer = frame_address(current_frame) + layer_address(current_layer);
