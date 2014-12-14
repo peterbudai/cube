@@ -12,4 +12,9 @@ void handle_reset() __attribute__ ((naked)) __attribute__ ((section (".init3")))
  */
 void perform_reset() __attribute__ ((noreturn));
 
+/**
+ * Properly halts the microcontroller.
+ */
+void perform_halt() __attribute__ ((noreturn));
+
 #endif /* RESET_H_ */

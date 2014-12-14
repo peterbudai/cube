@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 #include <avr/wdt.h>
 
 void handle_reset() {
@@ -14,6 +15,13 @@ void handle_reset() {
 void perform_reset() {
 	// Enable watchdog and wait until it fires
 	wdt_enable(WDTO_15MS);
+	perform_halt();
+}
+
+void perform_halt() {
 	cli();
-	while(true);
+	sleep_enable();
+	while(true) {
+		sleep_cpu();
+	}
 }

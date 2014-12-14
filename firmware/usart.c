@@ -111,12 +111,17 @@ void usart_init() {
 	UBRR0H = UBRRH_VALUE;
 	UBRR0L = UBRRL_VALUE;
 	UCSR0A |= (USE_2X << U2X0);
-
+	UCSR0B = 0;
 	// Set frame format to 8N1
 	UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
 	
 	// Enable receive via interrupts (transmit will be enabled when the first message sent)
-	UCSR0B = (1 << RXEN0) | (1 << RXCIE0);
+	usart_receive_on();
+}
+
+void usart_stop() {
+	usart_receive_off();
+	usart_send_off();
 }
 
 bool usart_send_message_byte(uint8_t data) {
