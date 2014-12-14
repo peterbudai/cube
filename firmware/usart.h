@@ -12,9 +12,17 @@
  */
 void usart_init();
 
-bool usart_send_byte(uint8_t data);
+bool usart_send_message_byte(uint8_t data);
 
-bool usart_send_buf(uint8_t* buf, uint8_t length);
+bool usart_send_message_buf(uint8_t* buf, uint8_t length);
+
+uint8_t usart_get_received_message_length();
+
+uint8_t usart_get_received_message_byte(uint8_t index);
+
+void usart_get_received_message_buf(uint8_t index, uint8_t* buf, uint8_t length);
+
+void usart_drop_received_message();
 
 
 #endif

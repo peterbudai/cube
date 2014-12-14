@@ -62,11 +62,35 @@ static inline uint8_t buffer_get(buffer_t* buf) {
 	return data;
 }
 
-#define usart_send_on()	UCSR0B |= (1 << UDRIE0)
-#define usart_send_off() UCSR0B &= ~(1 << UDRIE0)
+static inline uint8_t buffer_peek(buffer_t* buf) {
+	return buf->buffer[buf->read_pos];
+}
+
+static inline uint8_t buffer_pos(buffer_t* buf, uint8_t pos) {
+	uint8_t remain = USART_BUFFER_SIZE - buf->read_pos;
+	if(remain < pos) {
+		return pos - remain;
+	} else {
+		return buf->read_pos + pos;
+	}
+}
+
+#define USART_SEND_BITS ((1 << TXEN0) | (1 << UDRIE0))
+#define USART_RECEIVE_BITS ((1 << RXEN0) | (1 << RXCIE0))
+
+#define usart_send_on()	UCSR0B |= USART_SEND_BITS
+#define usart_send_off() UCSR0B &= ~USART_SEND_BITS
+#define usart_receive_on()	UCSR0B |= USART_RECEIVE_BITS
+#define usart_receive_off() UCSR0B &= ~USART_RECEIVE_BITS
 
 // Received data ready interrupt handler
 ISR(USART_RX_vect) {
+	// bool error = if(UCSR0A & ((1 << FE0) | (1 << DOR0) | (1 << UPE0)));
+	if(buffer_full(&send_buffer)) {
+		usart_receive_off();
+	}
+	
+	buffer_put(&receive_buffer, UDR0);
 }
 
 // Ready to send data interrupt handler
@@ -91,16 +115,15 @@ void usart_init() {
 	// Set frame format to 8N1
 	UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
 	
-	// Enable receive and transmit via interrupts
-	// UDRIE0 is not enabled because there is nothing to send
-	UCSR0B = (1 << TXEN0) | (1 << RXEN0) | (1 << RXCIE0);
+	// Enable receive via interrupts (transmit will be enabled when the first message sent)
+	UCSR0B = (1 << RXEN0) | (1 << RXCIE0);
 }
 
-bool usart_send_byte(uint8_t data) {
-	return usart_send_buf(&data, 1);
+bool usart_send_message_byte(uint8_t data) {
+	return usart_send_message_buf(&data, 1);
 }
 
-bool usart_send_buf(uint8_t* buf, uint8_t length) {
+bool usart_send_message_buf(uint8_t* buf, uint8_t length) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		usart_send_on();
 		
@@ -113,4 +136,44 @@ bool usart_send_buf(uint8_t* buf, uint8_t length) {
 		}
 	}
 	return true;
+}
+
+uint8_t usart_get_received_message_length() {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		uint8_t buf_len = buffer_length(&receive_buffer);
+		if(buf_len > 0) {
+			uint8_t msg_len = buffer_peek(&receive_buffer);
+			if(buf_len > msg_len) {
+				return msg_len;
+			}
+		}
+	}
+	return 0;
+}
+
+uint8_t usart_get_received_message_byte(uint8_t index) {
+	uint8_t data;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		data = receive_buffer.buffer[buffer_pos(&receive_buffer, index + 1)];
+	}
+	return data;
+}
+
+void usart_get_received_message_buf(uint8_t index, uint8_t* buf, uint8_t length) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		uint8_t pos = buffer_pos(&receive_buffer, index + 1);
+		for(uint8_t i = 0; i < length; ++i) {
+			buf[i] = receive_buffer.buffer[pos++];
+			if(pos >= USART_BUFFER_SIZE) {
+				pos = 0;
+			}
+		}
+	}
+}
+
+void usart_drop_received_message() {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		receive_buffer.read_pos = buffer_pos(&receive_buffer, buffer_peek(&receive_buffer) + 1);
+		usart_receive_on();
+	}
 }
