@@ -10,6 +10,80 @@
 
 #define set_bit(x, b, v) (x) = ((x) & ~(1 << (b))) | ((v) << (b))
 
+static void make_tree(uint8_t* frame) {
+	frame[ 0] = 0b00000000;
+	frame[ 1] = 0b00000000;
+	frame[ 2] = 0b00010000;
+	frame[ 3] = 0b00111000;
+	frame[ 4] = 0b00010000;
+	frame[ 5] = 0b00000000;
+	frame[ 6] = 0b00000000;
+	frame[ 7] = 0b00000000;
+
+	frame[ 8] = 0b00010000;
+	frame[ 9] = 0b00010000;
+	frame[10] = 0b00010000;
+	frame[11] = 0b11111110;
+	frame[12] = 0b00010000;
+	frame[13] = 0b00010000;
+	frame[14] = 0b00010000;
+	frame[15] = 0b00000000;
+
+	frame[16] = 0b00000000;
+	frame[17] = 0b00010000;
+	frame[18] = 0b00000000;
+	frame[19] = 0b01000100;
+	frame[20] = 0b00000000;
+	frame[21] = 0b00010000;
+	frame[22] = 0b00000000;
+	frame[23] = 0b00000000;
+
+	frame[24] = 0b00000000;
+	frame[25] = 0b00000000;
+	frame[26] = 0b00010000;
+	frame[27] = 0b00101000;
+	frame[28] = 0b00010000;
+	frame[29] = 0b00000000;
+	frame[30] = 0b00000000;
+	frame[31] = 0b00000000;
+
+	frame[32] = 0b00000000;
+	frame[33] = 0b00010000;
+	frame[34] = 0b00010000;
+	frame[35] = 0b01101100;
+	frame[36] = 0b00010000;
+	frame[37] = 0b00010000;
+	frame[38] = 0b00000000;
+	frame[39] = 0b00000000;
+
+	frame[40] = 0b00000000;
+	frame[41] = 0b00000000;
+	frame[42] = 0b00010000;
+	frame[43] = 0b00101000;
+	frame[44] = 0b00010000;
+	frame[45] = 0b00000000;
+	frame[46] = 0b00000000;
+	frame[47] = 0b00000000;
+
+	frame[48] = 0b00000000;
+	frame[49] = 0b00000000;
+	frame[50] = 0b00000000;
+	frame[51] = 0b00010000;
+	frame[52] = 0b00000000;
+	frame[53] = 0b00000000;
+	frame[54] = 0b00000000;
+	frame[55] = 0b00000000;
+
+	frame[56] = 0b00000000;
+	frame[57] = 0b00000000;
+	frame[58] = 0b00000000;
+	frame[59] = 0b00000000;
+	frame[60] = 0b00000000;
+	frame[61] = 0b00000000;
+	frame[62] = 0b00000000;
+	frame[63] = 0b00000000;
+}
+
 static void make_frame(uint8_t* frame, uint8_t i, uint8_t m) {
 	for(uint8_t l = 0; l < 8; l++) {
 		for(uint8_t r = 0; r < 8; r++) {
@@ -43,7 +117,7 @@ int main()
 	
 	uint8_t m = 0;
 	uint8_t i = 0;
-	bool enabled = true;
+	uint8_t mode = 1;
 	
 	while(true) {
 		uint8_t len = usart_get_received_message_length();
@@ -52,29 +126,33 @@ int main()
 			if(cmd == 0x01) {
 				usart_send_message_byte(0x81);
 			} else if(cmd == 0x02) {
-				if(enabled) {
+				if(mode == 2) {
 					cube_disable();
-					enabled = false;
+					mode = 0;
 				} else {
 					cube_enable();
-					enabled = true;
+					mode++;
 				}
-				uint8_t reply[2] = { 0x82, enabled };
+				uint8_t reply[2] = { 0x82, mode };
 				usart_send_message_buf(reply, 2);
 			} else if(cmd == 0x7F) {
-				enabled = usart_get_received_message_byte(1);
+				mode = usart_get_received_message_byte(1);
 				break;
 			}
 			usart_drop_received_message();
 		}
 		
-		if(enabled && cube_advance_frame(CUBE_FRAME_ASIS)) {
-			make_frame(cube_get_frame(), i, m);
-			if(++i >= 8) {
-				i = 0;
-				if(++m >= 3) {
-					m = 0;
+		if(mode != 0 && cube_advance_frame(CUBE_FRAME_ASIS)) {
+			if(mode == 1) {
+				make_frame(cube_get_frame(), i, m);
+				if(++i >= 8) {
+					i = 0;
+					if(++m >= 3) {
+						m = 0;
+					}
 				}
+			} else {
+				make_tree(cube_get_frame());
 			}
 		}
 
@@ -92,9 +170,5 @@ int main()
 	// Blink LED
 	led_blink(200);
 	
-	if(enabled) {
-		perform_reset();
-	} else {
-		perform_halt();
-	}
+	perform_reset();
 }
