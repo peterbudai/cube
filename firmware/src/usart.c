@@ -15,12 +15,12 @@ typedef struct {
 
 // 01234567890123456789
 // --r=============w--- 14/5
-// =======w------r===== 13/6 
+// =======w------r===== 13/6
 // b------------------- 0/19
 // r==================w 19/0
 
-buffer_t receive_buffer __attribute__ ((section (".noinit")));
-buffer_t send_buffer __attribute__ ((section (".noinit")));
+buffer_t receive_buffer __attribute__((section(".noinit")));
+buffer_t send_buffer __attribute__((section(".noinit")));
 
 static inline void buffer_clear(buffer_t* buf) {
 	buf->write_pos = 0;
@@ -89,7 +89,7 @@ ISR(USART_RX_vect) {
 	if(buffer_full(&send_buffer)) {
 		usart_receive_off();
 	}
-	
+
 	buffer_put(&receive_buffer, UDR0);
 }
 
@@ -99,14 +99,14 @@ ISR(USART_UDRE_vect) {
 		usart_send_off();
 		return;
 	}
-	
+
 	UDR0 = buffer_get(&send_buffer);
 }
 
-void usart_init() {
+void usart_init(void) {
 	buffer_clear(&receive_buffer);
 	buffer_clear(&send_buffer);
-	
+
 	// Set up baud rate
 	UBRR0H = UBRRH_VALUE;
 	UBRR0L = UBRRL_VALUE;
@@ -114,12 +114,12 @@ void usart_init() {
 	UCSR0B = 0;
 	// Set frame format to 8N1
 	UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
-	
+
 	// Enable receive via interrupts (transmit will be enabled when the first message sent)
 	usart_receive_on();
 }
 
-void usart_stop() {
+void usart_stop(void) {
 	usart_receive_off();
 	usart_send_off();
 }
@@ -131,7 +131,7 @@ bool usart_send_message_byte(uint8_t data) {
 bool usart_send_message_buf(uint8_t* buf, uint8_t length) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		usart_send_on();
-		
+
 		if(buffer_available(&send_buffer) < length + 1) {
 			return false;
 		}
@@ -143,7 +143,7 @@ bool usart_send_message_buf(uint8_t* buf, uint8_t length) {
 	return true;
 }
 
-uint8_t usart_get_received_message_length() {
+uint8_t usart_get_received_message_length(void) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		uint8_t buf_len = buffer_length(&receive_buffer);
 		if(buf_len > 0) {
@@ -176,7 +176,7 @@ void usart_get_received_message_buf(uint8_t index, uint8_t* buf, uint8_t length)
 	}
 }
 
-void usart_drop_received_message() {
+void usart_drop_received_message(void) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		receive_buffer.read_pos = buffer_pos(&receive_buffer, buffer_peek(&receive_buffer) + 1);
 		usart_receive_on();

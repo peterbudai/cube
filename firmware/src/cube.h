@@ -1,5 +1,5 @@
-#ifndef CUBE_H_
-#define CUBE_H_
+#ifndef CUBE_H
+#define CUBE_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -21,20 +21,20 @@
  * Initializes the cube ports and interrupts.
  * The cube is turned off by default.
  */
-void cube_init();
+void cube_init(void);
 
 bool cube_advance_frame(uint8_t method);
 
-uint8_t* cube_get_frame();
+uint8_t* cube_get_frame(void);
 
 /**
  * Turns off the cube and related interrupts.
  */
-void cube_disable();
+void cube_disable(void);
 
 /**
  * Turns on the cube and related interrupts and start processing the frame buffer.
  */
-void cube_enable();
+void cube_enable(void);
 
-#endif /* CUBE_H_ */
+#endif /* CUBE_H */

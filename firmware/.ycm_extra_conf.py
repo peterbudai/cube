@@ -55,6 +55,7 @@ flags = [
 'c',
 '-I/usr/avr/include',
 '-D__AVR_ATmega328P__',
+'-DF_CPU=8000000',
 ]
 
 

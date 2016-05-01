@@ -26,7 +26,7 @@ static void make_frame(uint8_t* frame, uint8_t i, uint8_t m) {
 	}
 }
 
-int main()
+int main(void)
 {
 	// Init output ports
 	led_init();
@@ -34,17 +34,17 @@ int main()
 
 	// Blink LED
 	led_blink(200);
-	
+
 	usart_init();
 	cube_enable();
-	
+
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	sei();
-	
+
 	uint8_t m = 0;
 	uint8_t i = 0;
 	bool enabled = true;
-	
+
 	while(true) {
 		uint8_t len = usart_get_received_message_length();
 		if(len > 0) {
@@ -67,7 +67,7 @@ int main()
 			}
 			usart_drop_received_message();
 		}
-		
+
 		if(enabled && cube_advance_frame(CUBE_FRAME_ASIS)) {
 			make_frame(cube_get_frame(), i, m);
 			if(++i >= 8) {
@@ -88,10 +88,10 @@ int main()
 
 	cube_disable();
 	usart_stop();
-	
+
 	// Blink LED
 	led_blink(200);
-	
+
 	if(enabled) {
 		perform_reset();
 	} else {

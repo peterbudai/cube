@@ -24,7 +24,7 @@
 #define FRAME_REPEAT 5
 #define FRAME_PER_SECOND 25
 
-uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT] __attribute__ ((section (".noinit")));
+uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT] __attribute__((section(".noinit")));
 
 // Macros for dealing with output ports
 #define enable_off() ENABLE_PORT |= ENABLE_BIT
@@ -42,15 +42,15 @@ uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT] __attribute__ ((
 
 #define frame_address(f) (frame_buffer + (f) * CUBE_FRAME_SIZE)
 #define frame_next(f) ((f) >= CUBE_FRAME_BUFFER_COUNT - 1 ? 0 : (f) + 1)
-	
-uint8_t current_layer __attribute__ ((section (".noinit")));		// 0..7
-uint8_t current_repeat __attribute__ ((section (".noinit")));		// 0..FRAME_REPEAT
-uint8_t current_frame __attribute__ ((section (".noinit")));		// 0..CUBE_FRAME_BUFFER_COUNT
-uint8_t edited_frame __attribute__ ((section (".noinit")));			// 0..CUBE_FRAME_BUFFER_COUNT
+
+uint8_t current_layer __attribute__((section(".noinit")));		// 0..7
+uint8_t current_repeat __attribute__((section(".noinit")));		// 0..FRAME_REPEAT
+uint8_t current_frame __attribute__((section(".noinit")));		// 0..CUBE_FRAME_BUFFER_COUNT
+uint8_t edited_frame __attribute__((section(".noinit")));		// 0..CUBE_FRAME_BUFFER_COUNT
 
 ISR(TIMER0_COMPA_vect) {
 	uint8_t* layer = frame_address(current_frame) + layer_address(current_layer);
-	
+
 	enable_off();
 	layer_select(current_layer);
 	for(uint8_t row = 0; row < 8; row++) {
@@ -61,7 +61,7 @@ ISR(TIMER0_COMPA_vect) {
 	}
 	store();
 	enable_on();
-	
+
 	current_layer++;
 	if(current_layer >= 8) {
 		current_layer = 0;
@@ -76,7 +76,7 @@ ISR(TIMER0_COMPA_vect) {
 	}
 }
 
-static void cube_clear_edited_frame() {
+static void cube_clear_edited_frame(void) {
 	uint8_t* frame = frame_address(edited_frame);
 	for(uint8_t i = 0; i < CUBE_FRAME_SIZE; i++) {
 		frame[i] = 0;
@@ -91,7 +91,7 @@ static void cube_copy_edited_frame(uint8_t next) {
 	}
 }
 
-void cube_init()
+void cube_init(void)
 {
 	DDRB |= LAYER_MASK;
 	DDRC |= (ROWL_MASK | SHIFT_BIT | STORE_BIT);
@@ -99,7 +99,7 @@ void cube_init()
 
 	current_frame = 0;
 	edited_frame = 0;
-	
+
 	cube_clear_edited_frame();
 	cube_advance_frame(CUBE_FRAME_CLEAR);
 
@@ -124,11 +124,11 @@ bool cube_advance_frame(uint8_t method) {
 	return true;
 }
 
-uint8_t* cube_get_frame() {
+uint8_t* cube_get_frame(void) {
 	return frame_address(edited_frame);
 }
 
-void cube_disable()
+void cube_disable(void)
 {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		TCCR0B = 0;		// Set clock source to OFF
@@ -138,7 +138,7 @@ void cube_disable()
 	}
 }
 
-void cube_enable()
+void cube_enable(void)
 {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		TIMSK0 = 2;		// Enable timer interrupt

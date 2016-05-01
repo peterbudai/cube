@@ -1,5 +1,5 @@
-#ifndef PORTS_H_
-#define PORTS_H_
+#ifndef LED_H
+#define LED_H
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -17,4 +17,5 @@
 	led_off()
 
 
-#endif /* PORTS_H_ */
+#endif /* LED_H */
+
