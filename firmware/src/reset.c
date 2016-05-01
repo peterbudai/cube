@@ -1,4 +1,6 @@
-#include "reset.h"
+/// @file reset.c
+/// @copyright (C) 2016 Peter Budai
+/// Microcontroller reset logic.
 
 #include <stdbool.h>
 #include <avr/io.h>
@@ -6,7 +8,10 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 
+#include "reset.h"
+
 void handle_reset(void) {
+	// Clear reser flag and disable watchdog
 	MCUSR = 0;
 	wdt_disable();
 	cli();
@@ -25,3 +30,4 @@ void perform_halt(void) {
 		sleep_cpu();
 	}
 }
+

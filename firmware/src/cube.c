@@ -143,7 +143,7 @@ void cube_init(void)
 	cube_advance_frame(CUBE_FRAME_CLEAR);
 
 	// Set CTC mode
-	TCCR0A = 0x02;
+	TCCR0A = WGM01;
 	// Set interval to approx 1000 Hz
 	OCR0A = (F_CPU / 64 / (FRAME_PER_SECOND * FRAME_REPEAT * 8)) - 1;
 }
@@ -180,7 +180,7 @@ void cube_disable(void)
 		// Disable timer interrupt
 		TIMSK0 = 0x00;
 		// Clear interrupt flag if any
-		TIFR0 = 0x02;
+		TIFR0 = OCF0A;
 		// Turn cube off
 		enable_off();
 	}
@@ -190,12 +190,12 @@ void cube_enable(void)
 {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		// Enable timer interrupt
-		TIMSK0 = 0x02;
+		TIMSK0 = OCIE0A;
 		// Set clock source to F_CPU/64
-		TCCR0B = 0x03;
+		TCCR0B = CS01 | CS00;
 		// Reset timer
 		TCNT0 = 0x00;
-		// Start with a whole frame, cube will be enabled when timer fires
+		// Start with a whole frame, cube will be enabled when the timer fires
 		current_layer = 0;
 		current_repeat = 0;
 	}
