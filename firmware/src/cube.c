@@ -54,6 +54,8 @@
 /// Calculates the address of the next frame.
 /// @param f The current frame index.
 #define frame_next(f) ((f) >= CUBE_FRAME_BUFFER_COUNT - 1 ? 0 : (f) + 1)
+/// Calculates the number of free frames.
+#define frame_editable() (edited_frame <= current_frame ? current_frame - edited_frame : 16 - (edited_frame - current_frame))
 
 /// @name Global variables.
 /// @{
@@ -73,9 +75,6 @@ uint8_t current_frame __attribute__((section(".noinit")));
 /// The index of the currently edited 3D frame in the frame buffer.
 /// Possible values: 0..CUBE_FRAME_BUFFER_COUNT
 uint8_t edited_frame __attribute__((section(".noinit")));
-/// How many frames are filled in the buffer (including the displayed one, but not the edited one).
-/// Possible values: 0..CUBE_FRAME_BUFFER_COUNT
-uint8_t frame_count __attribute__((section(".noinit")));
 
 /// @}
 
@@ -103,9 +102,9 @@ ISR(TIMER0_COMPA_vect) {
 		if(current_repeat >= FRAME_REPEAT) {
 			current_repeat = 0;
 			// If there are no more frames to display, the last one will be freezed
-			if(frame_count > 1) {
-				current_frame = frame_next(current_frame);
-				frame_count--;
+			uint8_t next_frame = frame_next(current_frame);
+			if(next_frame != edited_frame) {
+				current_frame = next_frame;
 			}
 		}
 	}
@@ -151,15 +150,14 @@ void cube_init(void)
 uint8_t cube_advance_frame(uint8_t method) {
 	uint8_t free_count;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		free_count = CUBE_FRAME_BUFFER_COUNT - frame_count;
+		free_count = frame_editable();
 		// If there are no more undisplayed frames, the current one remains being edited
-		if(free_count > 0) {
+		if(free_count > 1) {
 			uint8_t next_frame = frame_next(edited_frame);
 			if(method == CUBE_FRAME_COPY) {
 				cube_copy_edited_frame(next_frame);
 			}
 			edited_frame = next_frame;
-			frame_count++;
 			if(method == CUBE_FRAME_CLEAR) {
 				cube_clear_edited_frame();
 			}
@@ -168,7 +166,17 @@ uint8_t cube_advance_frame(uint8_t method) {
 	return free_count;
 }
 
+uint8_t cube_get_free_frames(void) {
+	uint8_t free_count;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		free_count = frame_editable() - 1;
+	}
+	return free_count;
+}
+
 uint8_t* cube_get_frame(void) {
+	// No need for atomic block, because reading a single uint8_t (edited_frame) is atomic,
+	// the other value (frame_buffer pointer) is constant.
 	return frame_address(edited_frame);
 }
 

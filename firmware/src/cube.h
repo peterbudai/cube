@@ -33,6 +33,10 @@ void cube_init(void);
 /// @return The number of frames left (including the currently edited one).
 uint8_t cube_advance_frame(uint8_t method);
 
+/// Returns the number of free frames that are availabel to edit.
+/// @return The number of frames left (excluding the currently edited one).
+uint8_t cube_get_free_frames(void);
+
 /// Return the currently edited frame.
 /// It is a pointer to consecutive CUBE_FRAME_SIZE bytes.
 uint8_t* cube_get_frame(void);
