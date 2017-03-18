@@ -1,3 +1,4 @@
+#include <setjmp.h>
 #include <stdbool.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -26,6 +27,21 @@ static void make_frame(uint8_t* frame, uint8_t i, uint8_t m) {
 	}
 }
 
+bool system_event;
+jmp_buf job_exit_point;
+
+void wait(void) {
+	sleep_enable();
+	sei();
+	sleep_cpu();
+	cli();
+	sleep_disable();
+
+	if(system_event) {
+		longjmp(job_exit_point, 1);
+	}
+}
+
 int main(void)
 {
 	// Init output ports
@@ -44,6 +60,7 @@ int main(void)
 	uint8_t m = 0;
 	uint8_t i = 0;
 	bool enabled = true;
+	system_event = false;
 
 	while(true) {
 		uint8_t len = usart_get_received_message_length();
@@ -68,8 +85,8 @@ int main(void)
 			usart_drop_received_message();
 		}
 
-		if(enabled && cube_advance_frame(CUBE_FRAME_ASIS)) {
-			make_frame(cube_get_frame(), i, m);
+		if(enabled) {
+			make_frame(cube_advance_frame(), i, m);
 			if(++i >= 8) {
 				i = 0;
 				if(++m >= 3) {

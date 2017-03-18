@@ -36,7 +36,7 @@ static inline uint8_t buffer_length(buffer_t* buf) {
 }
 
 static inline uint8_t buffer_available(buffer_t* buf) {
-	 return USART_BUFFER_SIZE - buffer_length(buf) - 1;
+	return USART_BUFFER_SIZE - buffer_length(buf) - 1;
 }
 
 static inline bool buffer_empty(buffer_t* buf) {

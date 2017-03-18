@@ -7,7 +7,7 @@ TARGET_DIR = out
 TARGET = firmware
 
 SRC_DIR = src
-SRC_FILES = main.c reset.c cube.c usart.c font.c 
+SRC_FILES = main.c reset.c cube.c usart.c font.c draw.c
 
 CDEFS = 
 CFLAGS = -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -Wall -Wextra -Wstrict-prototypes -g -Os -Wa,-adhlns=$(<:$(SRC_DIR)/%.c=$(TARGET_DIR)/%.lst)
