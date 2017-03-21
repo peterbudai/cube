@@ -27,8 +27,8 @@ static void make_frame(uint8_t* frame, uint8_t i, uint8_t m) {
 	}
 }
 
-bool system_event;
-jmp_buf job_exit_point;
+//bool job_exit_event;
+//jmp_buf job_exit_point;
 
 void wait(void) {
 	sleep_enable();
@@ -37,9 +37,9 @@ void wait(void) {
 	cli();
 	sleep_disable();
 
-	if(system_event) {
-		longjmp(job_exit_point, 1);
-	}
+//	if(job_exit_event) {
+//		longjmp(job_exit_point, 1);
+//	}
 }
 
 int main(void)
@@ -49,7 +49,7 @@ int main(void)
 	cube_init();
 
 	// Blink LED
-	led_blink(200);
+	//led_blink(200);
 
 	usart_init();
 	cube_enable();
@@ -60,9 +60,9 @@ int main(void)
 	uint8_t m = 0;
 	uint8_t i = 0;
 	bool enabled = true;
-	system_event = false;
 
 	while(true) {
+		/*
 		uint8_t len = usart_get_received_message_length();
 		if(len > 0) {
 			uint8_t cmd = usart_get_received_message_byte(0);
@@ -84,7 +84,7 @@ int main(void)
 			}
 			usart_drop_received_message();
 		}
-
+		*/
 		if(enabled) {
 			make_frame(cube_advance_frame(), i, m);
 			if(++i >= 8) {

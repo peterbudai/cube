@@ -82,7 +82,7 @@ $(TARGET_DIR)/%.hex: $(TARGET_DIR)/%.elf | $(TARGET_DIR)
 	$(OBJCOPY) -O $(FORMAT) -R .eeprom $< $@
 
 $(TARGET_DIR)/%.eep: $(TARGET_DIR)/%.elf | $(TARGET_DIR)
-	-$(OBJCOPY) -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 -O $(FORMAT) $< $@
+	$(OBJCOPY) -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 -O $(FORMAT) $< $@
 
 # Create extended listing file from ELF output file.
 $(TARGET_DIR)/%.lss: $(TARGET_DIR)/%.elf | $(TARGET_DIR)
@@ -101,7 +101,7 @@ $(TARGET_DIR)/%.o : $(SRC_DIR)/%.c | $(TARGET_DIR)
 	$(CC) -c $(ALL_CFLAGS) $< -o $@ 
 
 # Include the dependency files.
--include $(wildcard $(TARGET_DIR)/*.d)
+include $(wildcard $(TARGET_DIR)/*.d)
 
 # Listing of phony targets.
 .PHONY : all size elfsize hexsize build elf hex eep lss sym clean program program_flash program_eeprom

@@ -7,7 +7,7 @@
 #include "draw.h"
 #include "main.h"
 
-// @name Port numbers and bits.
+// Port numbers and bits.
 #define ROWH_PORT PORTD
 #define ROWH_MASK ((1 << PORTD7) | (1 << PORTD6) | (1 << PORTD5) | (1 << PORTD4))
 #define ROWL_PORT PORTC
@@ -24,7 +24,7 @@
 #define LAYER_PORT PORTB
 #define LAYER_MASK ((1 << PORTB2) | (1 << PORTB1) | (1 << PORTB0))
 
-// @name Macros for dealing with output ports.
+// Macros for dealing with output ports.
 #define enable_off() ENABLE_PORT |= ENABLE_BIT
 #define enable_on() ENABLE_PORT &= ~ENABLE_BIT
 
@@ -88,7 +88,7 @@ void cube_init(void)
 	DDRD |= (ROWH_MASK | ENABLE_BIT);
 
 	// Set CTC mode
-	TCCR0A = WGM01;
+	TCCR0A = (1 << WGM01);
 	// Set interval to approx 1000 Hz
 	OCR0A = (F_CPU / 64 / (CUBE_FRAME_PER_SECOND * CUBE_FRAME_REPEAT * 8)) - 1;
 
@@ -102,9 +102,9 @@ void cube_enable(void)
 {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		// Enable timer interrupt
-		TIMSK0 = OCIE0A;
+		TIMSK0 = (1 << OCIE0A);
 		// Set clock source to F_CPU/64
-		TCCR0B = CS01 | CS00;
+		TCCR0B = (1 << CS01) | (1 << CS00);
 		// Reset timer
 		TCNT0 = 0x00;
 		// Start with a whole frame, cube will be enabled when the timer fires
@@ -121,7 +121,7 @@ void cube_disable(void)
 		// Disable timer interrupt
 		TIMSK0 = 0x00;
 		// Clear interrupt flag if any
-		TIFR0 = OCF0A;
+		TIFR0 = (1 << OCF0A);
 		// Turn cube off
 		enable_off();
 	}
