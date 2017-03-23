@@ -3,13 +3,11 @@ FREQ = 8000000
 
 FORMAT = ihex
 
+SRC_DIR = src
 TARGET_DIR = out
 TARGET = firmware
 
-SRC_DIR = src
-SRC_FILES = main.c reset.c cube.c usart.c font.c draw.c
-
-CDEFS = 
+CDEFS = -DF_CPU=$(FREQ) 
 CFLAGS = -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -Wall -Wextra -Wstrict-prototypes -g -Os -Wa,-adhlns=$(<:$(SRC_DIR)/%.c=$(TARGET_DIR)/%.lst)
 LDFLAGS = -Wl,-Map=$(TARGET_DIR)/$(TARGET).map,--cref -lm
 
@@ -28,15 +26,15 @@ AVRDUDE = avrdude
 REMOVE = rm -r
 MKDIR = mkdir -p
 
-SRC = $(SRC_FILES:%.c=$(SRC_DIR)/%.c)
-OBJ = $(SRC_FILES:%.c=$(TARGET_DIR)/%.o) 
+SRC = $(wildcard $(SRC_DIR)/*.c)
+OBJ = $(addprefix $(TARGET_DIR)/,$(notdir $(SRC:.c=.o)))
 
 # Compiler flags to generate dependency files.
 GENDEPFLAGS = -Wp,-M,-MP,-MT,$(TARGET_DIR)/$(*F).o,-MF,$(TARGET_DIR)/$(@F).d
 
 # Combine all necessary flags and optional flags.
 # Add target processor to flags.
-ALL_CFLAGS = -mmcu=$(MCU) -DF_CPU=$(FREQ) -I$(SRC_DIR) $(CFLAGS) $(CDEFS) $(GENDEPFLAGS)
+ALL_CFLAGS = -mmcu=$(MCU) -I$(SRC_DIR) $(CFLAGS) $(CDEFS) $(GENDEPFLAGS)
 
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
