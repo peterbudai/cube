@@ -1,5 +1,4 @@
-MCU = atmega328p
-FREQ = 8000000
+include ../Makefile.config
 
 FORMAT = ihex
 
@@ -8,7 +7,7 @@ TARGET_DIR = out
 TARGET = firmware
 
 CDEFS = -DF_CPU=$(FREQ) 
-CFLAGS = -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -Wall -Wextra -Wstrict-prototypes -g -Os -Wa,-adhlns=$(<:$(SRC_DIR)/%.c=$(TARGET_DIR)/%.lst)
+CFLAGS = -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -Wall -Wextra -Wstrict-prototypes -g -O$(OPT) -Wa,-adhlns=$(<:$(SRC_DIR)/%.c=$(TARGET_DIR)/%.lst)
 LDFLAGS = -Wl,-Map=$(TARGET_DIR)/$(TARGET).map,--cref -lm
 
 AVRDUDE_PROGRAMMER = usbtiny

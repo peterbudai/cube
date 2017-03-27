@@ -5,7 +5,9 @@
 
 #include <pthread.h>
 
+#define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
+#include <GL/glext.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
 
@@ -100,17 +102,12 @@ float getLedOrigin(int dim, int index) {
 	return firstOffset + centerOffset * (float)index - 1.0;
 }
 
-bool getLedState(int x, int y, int z) {
-	if(enabled > 0) {
-		if(row_latch[y][x] & (1 << z)) {
-			return true;
-		}
-	}
-	return false;
-}
-
 void drawLeds() {
 	pthread_mutex_lock(&io_mutex);
+	uint8_t led_state[LED_COUNT][LED_COUNT];
+	memcpy(led_state, row_latch, sizeof(row_latch));
+	pthread_mutex_unlock(&io_mutex);
+
 	// The whole led cube takes up the whole 2x2x2 virtual space, origin at center
 	for(int x = 0; x < LED_COUNT; ++x) {
 		for(int y = 0; y < LED_COUNT; ++y) {
@@ -118,12 +115,11 @@ void drawLeds() {
 				glPushMatrix();
 				glTranslatef(getLedOrigin(DIM_X, x), getLedOrigin(DIM_Y, y), getLedOrigin(DIM_Z, z));
 				glScalef(LED_SCALE, LED_SCALE, LED_SCALE);
-				drawLed(getLedState(x, y, z));
+				drawLed(enabled > 0 && (led_state[y][x] & (1 << z)) > 0);
 				glPopMatrix();
 			}
 		}
 	}
-	pthread_mutex_unlock(&io_mutex);
 }
 
 void drawLigths() {
@@ -200,7 +196,7 @@ void onMotion(int x, int y) {
 	}
 }
 
-void onTimer(int value) {
+void onTimer(int value __attribute__((unused))) {
 	static unsigned long last_time = 0;
 	static unsigned long last_ticks = 0;
 	static unsigned long last_draw = 0;
@@ -215,12 +211,13 @@ void onTimer(int value) {
 
 	if(elapsed_time >= 1000) {
 		unsigned long elapsed_ticks = cpu_ticks - last_ticks;
+		unsigned long elapsed_draw = draw_count - last_draw;
 
 		float real = (float)cur_time / 1000;
-		float virt = (float)cpu_ticks / 8000000;
+		float virt = (float)cpu_ticks / MCU_FREQ;
 		float cps = (float)elapsed_ticks / elapsed_time / 1000;
-		float ratio = (float)elapsed_ticks / 8000000 * 100;
-		float fps = (float)(draw_count - last_draw) / elapsed_time * 1000;
+		float ratio = (float)elapsed_ticks / MCU_FREQ * 100;
+		float fps = (float)elapsed_draw / elapsed_time * 1000;
 		sprintf(status, "Real: %.1f s, Virt: %.1f s, CPU: %.2f MHz (%.1f %%), Sim: %.2f FPS", real, virt, cps, ratio, fps);
 
 		last_time = cur_time;
@@ -230,21 +227,24 @@ void onTimer(int value) {
 	pthread_mutex_unlock(&io_mutex);
 
 	glutPostRedisplay();
-	glutTimerFunc(50, onTimer, 0);
+	glutTimerFunc(20, onTimer, 0);
 }
 
-void* onIdle(void* args) {
+void* onIdle(void* args __attribute__((unused))) {
+	unsigned long real_ticks = 0;
 	while(true) {
-		pthread_mutex_lock(&io_mutex);
-		cpu_ticks++;
-		pthread_mutex_unlock(&io_mutex);
+		if(real_ticks++ % 16384 == 0) {
+			pthread_mutex_lock(&io_mutex);
+			cpu_ticks = real_ticks;
+			pthread_mutex_unlock(&io_mutex);
+		}
 
 		avr_run(avr);
 	}
 	return NULL;
 }
 
-void onEnable(struct avr_irq_t* irq, uint32_t value, void* param) {
+void onEnable(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
 	if(value == 0) {
 		pthread_mutex_lock(&io_mutex);
 		enabled = 8;
@@ -252,7 +252,7 @@ void onEnable(struct avr_irq_t* irq, uint32_t value, void* param) {
 	}
 }
 
-void onShift(struct avr_irq_t* irq, uint32_t value, void* param) {
+void onShift(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
 	if(value) {
 		uint8_t row_data = (avr->data[PORTD] & 0xF0) | (avr->data[PORTC] & 0x0F);
 		for(int i = 0; i < 8; ++i) {
@@ -261,7 +261,7 @@ void onShift(struct avr_irq_t* irq, uint32_t value, void* param) {
 	}
 }
 
-void onStore(struct avr_irq_t* irq, uint32_t value, void* param) {
+void onStore(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
 	if(value) {
 		pthread_mutex_lock(&io_mutex);
 		uint8_t layer = avr->data[PORTB] & 0x07;
@@ -296,10 +296,10 @@ int main(int argc, char** argv) {
 
 	elf_firmware_t fw;
 	elf_read_firmware("../firmware/out/firmware.elf", &fw);
-	avr = avr_make_mcu_by_name("atmega328p");
+	avr = avr_make_mcu_by_name(MCU_NAME);
 	avr_init(avr);
 	avr_load_firmware(avr, &fw);
-	avr->frequency = 8000000;
+	avr->frequency = MCU_FREQ;
 
 	for(int i = 1; i < argc; ++i) {
 		if(strcmp(argv[i], "-g") == 0) {
