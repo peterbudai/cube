@@ -20,6 +20,9 @@ all: $(TARGET_DIR)/$(TARGET)
 run: $(TARGET_DIR)/$(TARGET)
 	LD_LIBRARY_PATH=$(SIM_LIB_DIR)/lib $<
 
+debug: $(TARGET_DIR)/$(TARGET)
+	LD_LIBRARY_PATH=$(SIM_LIB_DIR)/lib $< -g
+
 clean:
 	$(REMOVE) $(TARGET_DIR)
 
@@ -29,5 +32,5 @@ $(TARGET_DIR)/$(TARGET): $(SRC) | $(TARGET_DIR)
 $(TARGET_DIR):
 	$(MKDIR) $(TARGET_DIR)
 
-.PHONY: all run clean
+.PHONY: all run debug clean
 

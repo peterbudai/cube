@@ -1,31 +1,15 @@
 #include <setjmp.h>
 #include <stdbool.h>
 #include <avr/interrupt.h>
-#include <avr/io.h>
+#include <avr/signature.h>
 #include <avr/sleep.h>
 
+#include "app.h"
 #include "cube.h"
 #include "led.h"
+#include "main.h"
 #include "reset.h"
 #include "usart.h"
-
-#define set_bit(x, b, v) (x) = ((x) & ~(1 << (b))) | ((v) << (b))
-
-static void make_frame(uint8_t* frame, uint8_t i, uint8_t m) {
-	for(uint8_t l = 0; l < 8; l++) {
-		for(uint8_t r = 0; r < 8; r++) {
-			for(uint8_t c = 0; c < 8; c++) {
-				if(m == 0) {
-					set_bit(frame[l * 8 + r], c, (l == i) ? 1 : 0);
-				} else if(m == 1) {
-					set_bit(frame[l * 8 + r], c, (r == i) ? 1 : 0);
-				} else {
-					set_bit(frame[l * 8 + r], c, (c == i) ? 1 : 0);
-				}
-			}
-		}
-	}
-}
 
 //bool job_exit_event;
 //jmp_buf job_exit_point;
@@ -52,13 +36,11 @@ int main(void)
 	//led_blink(200);
 
 	usart_init();
-	cube_enable();
+	apps_init();
 
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	sei();
 
-	uint8_t m = 0;
-	uint8_t i = 0;
 	bool enabled = true;
 
 	while(true) {
@@ -86,13 +68,7 @@ int main(void)
 		}
 		*/
 		if(enabled) {
-			make_frame(cube_advance_frame(), i, m);
-			if(++i >= 8) {
-				i = 0;
-				if(++m >= 3) {
-					m = 0;
-				}
-			}
+			apps[1]();
 		}
 
 		sleep_enable();

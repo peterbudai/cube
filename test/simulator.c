@@ -304,7 +304,9 @@ int main(int argc, char** argv) {
 	for(int i = 1; i < argc; ++i) {
 		if(strcmp(argv[i], "-g") == 0) {
 			avr->gdb_port = 1234;
-			avr->state = cpu_Stopped;
+			if(i + 1 < argc && strcmp(argv[i + 1], "-p") == 0) {
+				avr->state = cpu_Stopped;
+			}
 			avr_gdb_init(avr);
 		}
 	}

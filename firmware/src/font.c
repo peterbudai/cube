@@ -1,5 +1,6 @@
-#include <stdint.h>
 #include <avr/eeprom.h>
+
+#include "font.h"
 
 /**
  * 8x8 monochrome bitmap fonts for rendering
@@ -19,7 +20,7 @@
  *     Fetched from:
  *         http://dimensionalrift.homelinux.net/combuster/mos3/?p=viewsource&file=/modules/gfx/font8_8.asm
  **/
-uint8_t font_data[128][8] __attribute__((section(".eeprom"))) = {
+uint8_t font_data[FONT_CHAR_COUNT][FONT_CHAR_SIZE] __attribute__((section(".eeprom"))) = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+0000 (nul)
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+0001
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+0002
@@ -150,3 +151,6 @@ uint8_t font_data[128][8] __attribute__((section(".eeprom"))) = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}    // U+007F (del)
 };
 
+void font_load(uint8_t* buf, char chr) {
+	eeprom_read_block(buf, font_data[chr], FONT_CHAR_SIZE);
+}
