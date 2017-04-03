@@ -101,7 +101,7 @@ $(TARGET_DIR)/%.o : $(SRC_DIR)/%.c | $(TARGET_DIR)
 include $(wildcard $(TARGET_DIR)/*.d)
 
 # Listing of phony targets.
-.PHONY : all size elfsize hexsize build elf hex eep lss sym clean program program_flash program_eeprom
-.SECONDARY : $(TARGET_DIR)/$(TARGET).elf
-.PRECIOUS : $(OBJ)
+.PHONY: all size elfsize hexsize build elf hex eep lss sym clean program program_flash program_eeprom
+.SECONDARY: $(TARGET_DIR)/$(TARGET).elf
+.PRECIOUS: $(OBJ)
 
