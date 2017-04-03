@@ -8,6 +8,7 @@
 #include <GL/glut.h>
 
 #include "io.h"
+#include "mcu.h"
 
 #define DIM_X 0
 #define DIM_ROW 0
@@ -184,18 +185,18 @@ void onTimer(int value __attribute__((unused))) {
 	leds_dim_down();
 
 	if(elapsed_time >= 1000) {
-		unsigned long elapsed_ticks = cpu_ticks - last_ticks;
+		unsigned long elapsed_ticks = mcu_ticks - last_ticks;
 		unsigned long elapsed_draw = draw_count - last_draw;
 
 		float real = (float)cur_time / 1000;
-		float virt = (float)cpu_ticks / MCU_FREQ;
+		float virt = (float)mcu_ticks / MCU_FREQ;
 		float cps = (float)elapsed_ticks / elapsed_time / 1000;
 		float ratio = (float)elapsed_ticks / MCU_FREQ * 100;
 		float fps = (float)elapsed_draw / elapsed_time * 1000;
 		snprintf(status, sizeof(status), "Real: %.1f s, Virt: %.1f s, CPU: %.2f MHz (%.1f %%), Sim: %.2f FPS", real, virt, cps, ratio, fps);
 
 		last_time = cur_time;
-		last_ticks = cpu_ticks;
+		last_ticks = mcu_ticks;
 		last_draw = draw_count;
 	}
 

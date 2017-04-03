@@ -6,17 +6,7 @@
 
 #include <pthread.h>
 
-extern volatile uint64_t cpu_ticks;
-
 #define LED_COUNT 8
-
-typedef struct {
-	uint8_t state[LED_COUNT][LED_COUNT];
-	int enabled;
-	pthread_mutex_t mutex;
-} leds_t;
-
-extern leds_t leds;
 
 void leds_init(void);
 void leds_copy_state(uint8_t state[][LED_COUNT], bool* enabled);
