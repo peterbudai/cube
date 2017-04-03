@@ -25,6 +25,7 @@ AVRDUDE = avrdude
 REMOVE = rm -r
 MKDIR = mkdir -p
 
+# Collect source and intermediary files
 SRC = $(wildcard $(SRC_DIR)/*.c)
 OBJ = $(addprefix $(TARGET_DIR)/,$(notdir $(SRC:.c=.o)))
 
@@ -34,6 +35,7 @@ GENDEPFLAGS = -Wp,-M,-MP,-MT,$(TARGET_DIR)/$(*F).o,-MF,$(TARGET_DIR)/$(@F).d
 # Combine all necessary flags and optional flags.
 # Add target processor to flags.
 ALL_CFLAGS = -mmcu=$(MCU) -I$(SRC_DIR) $(CFLAGS) $(CDEFS) $(GENDEPFLAGS)
+ALL_LDFLAGS = $(LDFLAGS)
 
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
@@ -71,6 +73,7 @@ clean:
 
 # ---------------------------------------------------------------------------
 
+# Create output directory
 $(TARGET_DIR):
 	$(MKDIR) $(TARGET_DIR)
 
@@ -91,11 +94,11 @@ $(TARGET_DIR)/%.sym: $(TARGET_DIR)/%.elf | $(TARGET_DIR)
 
 # Link: create ELF output file from object files.
 $(TARGET_DIR)/%.elf: $(OBJ) | $(TARGET_DIR)
-	$(CC) $(ALL_CFLAGS) $(OBJ) --output $@ $(LDFLAGS)
+	$(CC) $(ALL_CFLAGS) -o $@ $(OBJ) $(ALL_LDFLAGS)
 
 # Compile: create object files from C source files.
 $(TARGET_DIR)/%.o : $(SRC_DIR)/%.c | $(TARGET_DIR)
-	$(CC) -c $(ALL_CFLAGS) $< -o $@ 
+	$(CC) $(ALL_CFLAGS) -c -o $@ $<
 
 # Include the dependency files.
 include $(wildcard $(TARGET_DIR)/*.d)

@@ -1,9 +1,5 @@
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <string.h>
-
-#include <pthread.h>
+#include <stdio.h>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
@@ -11,12 +7,8 @@
 #include <GL/glu.h>
 #include <GL/glut.h>
 
-#include <simavr/avr_ioport.h>
-#include <simavr/sim_avr.h>
-#include <simavr/sim_elf.h>
-#include <simavr/sim_gdb.h>
+#include "io.h"
 
-// Constants
 #define DIM_X 0
 #define DIM_ROW 0
 #define DIM_Y 1
@@ -25,32 +17,18 @@
 #define DIM_LAYER 2
 #define DIM_MAX 3
 
-#define LED_COUNT 8
 #define LED_SCALE 0.06
 float LED_DIM[DIM_MAX] = {0.8, 1, 0.8};
 float LED_OFF[DIM_MAX] = {0.6, 1, 0.6};
 
-#define PORTB 0x25
-#define PORTC 0x28
-#define PORTD 0x2B
-
-// Global variables
-uint8_t row_reg[LED_COUNT];
-uint8_t row_latch[LED_COUNT][LED_COUNT];
-int enabled;
-
-int rotateX = 11, rotateY = -23;
-int dragX, dragY;
-bool dragging = false;
-
-avr_t* avr;
-pthread_t cpu_thread;
-pthread_mutex_t io_mutex;
-unsigned long cpu_ticks = 0;
-unsigned long draw_count = 0;
+uint64_t draw_count = 0;
 char status[512] = {'\0'};
 
-void drawLed(bool state) {
+int rotate_x = 11, rotate_y = -23;
+int drag_x = 0, drag_y = 0;
+bool drag_on = false;
+
+static void draw_led(bool state) {
 	// Red plastic
 	float mat[4] = {0, 0, 0, 0};
 	if(state) {
@@ -90,7 +68,7 @@ void drawLed(bool state) {
 	gluDeleteQuadric(quad);
 }
 
-float getLedOrigin(int dim, int index) {
+static float get_led_origin(int dim, int index) {
 	// Space occupied by led heads
 	float headSpace = LED_DIM[dim] * LED_SCALE * LED_COUNT;
 	// Space between led heads
@@ -102,27 +80,26 @@ float getLedOrigin(int dim, int index) {
 	return firstOffset + centerOffset * (float)index - 1.0;
 }
 
-void drawLeds() {
-	pthread_mutex_lock(&io_mutex);
+static void draw_leds() {
 	uint8_t led_state[LED_COUNT][LED_COUNT];
-	memcpy(led_state, row_latch, sizeof(row_latch));
-	pthread_mutex_unlock(&io_mutex);
+	bool led_enabled;
+	leds_copy_state(led_state, &led_enabled);
 
 	// The whole led cube takes up the whole 2x2x2 virtual space, origin at center
 	for(int x = 0; x < LED_COUNT; ++x) {
 		for(int y = 0; y < LED_COUNT; ++y) {
 			for(int z = 0; z < LED_COUNT; ++z) {
 				glPushMatrix();
-				glTranslatef(getLedOrigin(DIM_X, x), getLedOrigin(DIM_Y, y), getLedOrigin(DIM_Z, z));
+				glTranslatef(get_led_origin(DIM_X, x), get_led_origin(DIM_Y, y), get_led_origin(DIM_Z, z));
 				glScalef(LED_SCALE, LED_SCALE, LED_SCALE);
-				drawLed(enabled > 0 && (led_state[y][x] & (1 << z)) > 0);
+				draw_led(led_enabled && (led_state[y][x] & (1 << z)) > 0);
 				glPopMatrix();
 			}
 		}
 	}
 }
 
-void drawLigths() {
+static void draw_ligths() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	float lgt[4] = {0, 0, 0, 1};
@@ -136,7 +113,7 @@ void drawLigths() {
 	glEnable(GL_LIGHT0);
 }
 
-void drawInfo() {
+static void draw_info() {
 	int len = strlen(status);
 	glWindowPos2i(1000 - len * 9, 1000 - 15);
 	for(int i = 0; i < len; ++i) {
@@ -149,12 +126,12 @@ void onDisplay() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	drawInfo();
+	draw_info();
 
-	glRotatef(rotateX, 1, 0, 0);
-	glRotatef(rotateY, 0, 1, 0);
+	glRotatef(rotate_x, 1, 0, 0);
+	glRotatef(rotate_y, 0, 1, 0);
 	glScalef(0.5, 0.5, 0.5);
-	drawLeds();
+	draw_leds();
 
 	glutSwapBuffers();
 	draw_count++;
@@ -163,34 +140,34 @@ void onDisplay() {
 void onMouse(int button, int state, int x, int y) {
 	if(button == GLUT_LEFT_BUTTON) {
 		if(state == GLUT_DOWN) {
-			dragging = true;
-			dragX = x;
-			dragY = y;
+			drag_on = true;
+			drag_x = x;
+			drag_y = y;
 		} else {
-			dragging = false;
+			drag_on = false;
 		}
 	}
 }
 
 void onMotion(int x, int y) {
-	if(dragging) {
-		int diffX = x - dragX;
+	if(drag_on) {
+		int diffX = x - drag_x;
 		if(abs(diffX) > 10) {
-			rotateY += diffX / 10;
-			rotateY %= 360;
-			dragX = x;
+			rotate_y += diffX / 10;
+			rotate_y %= 360;
+			drag_x = x;
 			glutPostRedisplay();
 		}
-		int diffY = y - dragY;
+		int diffY = y - drag_y;
 		if(abs(diffY) > 10) {
-			rotateX += diffY / 10;
-			if(rotateX > 30) {
-				rotateX = 30;
+			rotate_x += diffY / 10;
+			if(rotate_x > 30) {
+				rotate_x = 30;
 			}
-			if(rotateX < -30) {
-				rotateX = -30;
+			if(rotate_x < -30) {
+				rotate_x = -30;
 			}
-			dragY = y;
+			drag_y = y;
 			glutPostRedisplay();
 		}
 	}
@@ -204,10 +181,7 @@ void onTimer(int value __attribute__((unused))) {
 	unsigned long cur_time = glutGet(GLUT_ELAPSED_TIME);
 	unsigned long elapsed_time = cur_time - last_time;
 
-	pthread_mutex_lock(&io_mutex);
-	if(enabled > 0) {
-		enabled--;
-	}
+	leds_dim_down();
 
 	if(elapsed_time >= 1000) {
 		unsigned long elapsed_ticks = cpu_ticks - last_ticks;
@@ -218,62 +192,19 @@ void onTimer(int value __attribute__((unused))) {
 		float cps = (float)elapsed_ticks / elapsed_time / 1000;
 		float ratio = (float)elapsed_ticks / MCU_FREQ * 100;
 		float fps = (float)elapsed_draw / elapsed_time * 1000;
-		sprintf(status, "Real: %.1f s, Virt: %.1f s, CPU: %.2f MHz (%.1f %%), Sim: %.2f FPS", real, virt, cps, ratio, fps);
+		snprintf(status, sizeof(status), "Real: %.1f s, Virt: %.1f s, CPU: %.2f MHz (%.1f %%), Sim: %.2f FPS", real, virt, cps, ratio, fps);
 
 		last_time = cur_time;
 		last_ticks = cpu_ticks;
 		last_draw = draw_count;
 	}
-	pthread_mutex_unlock(&io_mutex);
 
 	glutPostRedisplay();
 	glutTimerFunc(20, onTimer, 0);
 }
 
-void* onIdle(void* args __attribute__((unused))) {
-	unsigned long real_ticks = 0;
-	while(true) {
-		if(real_ticks++ % 16384 == 0) {
-			pthread_mutex_lock(&io_mutex);
-			cpu_ticks = real_ticks;
-			pthread_mutex_unlock(&io_mutex);
-		}
-
-		avr_run(avr);
-	}
-	return NULL;
-}
-
-void onEnable(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
-	if(value == 0) {
-		pthread_mutex_lock(&io_mutex);
-		enabled = 8;
-		pthread_mutex_unlock(&io_mutex);
-	}
-}
-
-void onShift(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
-	if(value) {
-		uint8_t row_data = (avr->data[PORTD] & 0xF0) | (avr->data[PORTC] & 0x0F);
-		for(int i = 0; i < 8; ++i) {
-			row_reg[i] = (row_reg[i] << 1) | ((row_data >> i) & 0x01);
-		}
-	}
-}
-
-void onStore(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
-	if(value) {
-		pthread_mutex_lock(&io_mutex);
-		uint8_t layer = avr->data[PORTB] & 0x07;
-		for(int i = 0; i < 8; ++i) {
-			row_latch[layer][i] = row_reg[i];
-		}
-		pthread_mutex_unlock(&io_mutex);
-	}
-}
-
-int main(int argc, char** argv) {
-	glutInit(&argc, argv);
+void ui_init(int* argc, char** argv) {
+	glutInit(argc, argv);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
 	glutInitWindowSize(1000, 1000);
 	glutCreateWindow("LED Cube Simulator");
@@ -292,32 +223,9 @@ int main(int argc, char** argv) {
 	glLoadIdentity();
 	gluPerspective(45, 1, 0.1, 100);
 	gluLookAt(0,1,2,0,0,0,0,1,-1);
-	drawLigths();
+	draw_ligths();
+}
 
-	elf_firmware_t fw;
-	elf_read_firmware("../firmware/out/firmware.elf", &fw);
-	avr = avr_make_mcu_by_name(MCU_NAME);
-	avr_init(avr);
-	avr_load_firmware(avr, &fw);
-	avr->frequency = MCU_FREQ;
-
-	for(int i = 1; i < argc; ++i) {
-		if(strcmp(argv[i], "-g") == 0) {
-			avr->gdb_port = 1234;
-			if(i + 1 < argc && strcmp(argv[i + 1], "-p") == 0) {
-				avr->state = cpu_Stopped;
-			}
-			avr_gdb_init(avr);
-		}
-	}
-
-	avr_irq_register_notify(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 3), onEnable, NULL);
-	avr_irq_register_notify(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('C'), 4), onShift, NULL);
-	avr_irq_register_notify(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('C'), 5), onStore, NULL);
-
-	pthread_mutex_init(&io_mutex, NULL);
-	pthread_create(&cpu_thread, NULL, onIdle, NULL);
-
+void ui_run(void) {
 	glutMainLoop();
-	return 0;
 }
