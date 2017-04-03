@@ -25,12 +25,8 @@ pthread_t mcu_thread;
 uint8_t shift_reg[LED_COUNT];
 
 static void* mcu_run(void* args) {
-	uint64_t real_ticks = 0;
 	while(true) {
-		if(real_ticks++ % 16384 == 0) {
-			mcu_ticks = real_ticks;
-		}
-
+		++mcu_ticks;
 		avr_run((avr_t*)args);
 	}
 	return NULL;
