@@ -175,8 +175,9 @@ void onMotion(int x, int y) {
 
 void onTimer(int value __attribute__((unused))) {
 	static unsigned long last_time = 0;
-	static unsigned long last_ticks = 0;
-	static unsigned long last_draw = 0;
+	static uint64_t last_ticks = 0;
+	static uint64_t last_draw = 0;
+	static uint64_t last_uart[2] = {0, 0};
 
 	unsigned long cur_time = glutGet(GLUT_ELAPSED_TIME);
 	unsigned long elapsed_time = cur_time - last_time;
@@ -184,15 +185,25 @@ void onTimer(int value __attribute__((unused))) {
 	leds_dim_down();
 
 	if(elapsed_time >= 1000) {
-		unsigned long elapsed_ticks = mcu_ticks - last_ticks;
-		unsigned long elapsed_draw = draw_count - last_draw;
+		uint64_t elapsed_ticks = mcu_ticks - last_ticks;
+		uint64_t elapsed_draw = draw_count - last_draw;
+
+		uint64_t current_uart[2];
+		uart_get_counts(current_uart);
 
 		float real = (float)cur_time / 1000;
 		float virt = (float)mcu_ticks / MCU_FREQ;
 		float cps = (float)elapsed_ticks / elapsed_time / 1000;
 		float ratio = (float)elapsed_ticks / MCU_FREQ * 100;
 		float fps = (float)elapsed_draw / elapsed_time * 1000;
-		snprintf(status, sizeof(status), "Real: %.1f s, Virt: %.1f s, CPU: %.2f MHz (%.1f %%), Sim: %.2f FPS", real, virt, cps, ratio, fps);
+		float bps[2];
+
+		for(int i = 0; i < 2; ++i) {
+			uint64_t elapsed_uart = current_uart[i] - last_uart[i];
+			bps[i] = (float)elapsed_uart / elapsed_time * 1000;
+			last_uart[i] = current_uart[i];
+		}
+		snprintf(status, sizeof(status), "Real: %.1f s, Virt: %.1f s, CPU: %.2f MHz (%.1f %%), In: %lu B (%.1f Bps), Out: %lu B (%.1f Bps), Sim: %.2f FPS", real, virt, cps, ratio, current_uart[UART_INPUT], bps[UART_INPUT], current_uart[UART_OUTPUT], bps[UART_OUTPUT], fps);
 
 		last_time = cur_time;
 		last_ticks = mcu_ticks;

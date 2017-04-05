@@ -9,6 +9,8 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
+#include "io.h"
+
 pthread_t uart_thread;
 int uart_socket = -1;
 
@@ -19,8 +21,10 @@ static void* uart_run(void* args) {
 		int client_socket = accept(uart_socket, (struct sockaddr*)&client_addr, &client_addr_len);
 		printf("UART peer connected from %s:%d\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port);
 
-		char client_message[512];
-		while(recv(client_socket, client_message, sizeof(client_message), 0) > 0) {
+		char client_message[UART_BUFFER_SIZE];
+		int client_message_size = 0;
+		while((client_message_size = recv(client_socket, client_message, sizeof(client_message), 0)) > 0) {
+			uart_put(UART_INPUT, client_message, client_message_size);
 		}
 	}
 

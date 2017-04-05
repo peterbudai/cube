@@ -9,8 +9,8 @@
 #include "ui.h"
 
 int main(int argc, char** argv) {
+	io_init();
 	ui_init(&argc, argv);
-	leds_init();
 	mcu_init(argc, argv);
 	uart_init(argc, argv);
 
