@@ -1,7 +1,5 @@
 include ../Makefile.config
 
-SIM_LIB_DIR = ../../simavr/dist
-
 SRC_DIR = src
 
 TARGET_DIR = out
@@ -26,16 +24,16 @@ OBJ = $(addprefix $(TARGET_DIR)/,$(notdir $(SRC:.c=.o)))
 GENDEPFLAGS = -Wp,-M,-MP,-MT,$(TARGET_DIR)/$(*F).o,-MF,$(TARGET_DIR)/$(@F).d
 
 # Combine all necessary flags and optional flags.
-ALL_CFLAGS = -I$(SIM_LIB_DIR)/include -I$(SRC_DIR) $(CFLAGS) $(CDEFS) $(GENDEPFLAGS)
-ALL_LDFLAGS = -L$(SIM_LIB_DIR)/lib $(LDFLAGS)
+ALL_CFLAGS = -I$(SRC_DIR) $(CFLAGS) $(CDEFS) $(GENDEPFLAGS)
+ALL_LDFLAGS = $(LDFLAGS)
 
 build: $(TARGET_DIR)/$(TARGET)
 
-run: $(TARGET_DIR)/$(TARGET)
-	LD_LIBRARY_PATH=$(SIM_LIB_DIR)/lib $<
+run: build
+	$<
 
-debug: $(TARGET_DIR)/$(TARGET)
-	LD_LIBRARY_PATH=$(SIM_LIB_DIR)/lib $< -g
+debug: build
+	$< -g
 
 clean:
 	$(REMOVE) $(TARGET_DIR)
