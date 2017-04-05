@@ -29,11 +29,11 @@ ALL_LDFLAGS = $(LDFLAGS)
 
 build: $(TARGET_DIR)/$(TARGET)
 
-run: build
-	$<
+run: $(TARGET_DIR)/$(TARGET)
+	$< -u $(UART_PORT)
 
-debug: build
-	$< -g
+debug: $(TARGET_DIR)/$(TARGET)
+	$< -u $(UART_PORT) -g $(GDB_PORT)
 
 clean:
 	$(REMOVE) $(TARGET_DIR)

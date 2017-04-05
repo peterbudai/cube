@@ -1,6 +1,8 @@
 #include "mcu.h"
 
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <pthread.h>
@@ -18,8 +20,6 @@
 #define PORTD 0x2B
 
 // Global variables
-volatile uint64_t mcu_ticks = 0;
-
 avr_t* mcu = NULL;
 pthread_t mcu_thread;
 uint8_t shift_reg[LED_COUNT];
@@ -67,13 +67,26 @@ void mcu_init(int argc, char** argv) {
 	avr_load_firmware(mcu, &fw);
 	mcu->frequency = MCU_FREQ;
 
+	int gdb_port = 0;
+	bool gdb_stopped = false;
 	for(int i = 1; i < argc; ++i) {
 		if(strcmp(argv[i], "-g") == 0) {
-			mcu->gdb_port = 1234;
-			if(i + 1 < argc && strcmp(argv[i + 1], "-p") == 0) {
-				mcu->state = cpu_Stopped;
+			if(i + 1 >= argc || (gdb_port = atoi(argv[++i])) <= 0) {
+				printf("Missing or invalid GDB port number\n");
+				exit(1);
 			}
-			avr_gdb_init(mcu);
+			continue;
+		}
+		if(strcmp(argv[i], "-p") == 0) {
+			gdb_stopped = true;
+			continue;
+		}
+	}
+
+	if(gdb_port > 0) {
+		mcu->gdb_port = gdb_port;
+		if(gdb_stopped) {
+			mcu->state = cpu_Stopped;
 		}
 	}
 

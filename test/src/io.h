@@ -6,6 +6,8 @@
 
 #include <pthread.h>
 
+extern volatile uint64_t mcu_ticks;
+
 #define LED_COUNT 8
 
 void leds_init(void);

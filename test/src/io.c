@@ -2,14 +2,17 @@
 
 #include <string.h>
 
+// MCU state
+volatile uint64_t mcu_ticks = 0;
+
+// Leds
+int leds_enabled = 0;
 uint8_t leds_state[LED_COUNT][LED_COUNT];
-int leds_enabled;
 pthread_mutex_t leds_mutex;
 
 void leds_init(void) {
-	leds_enabled = 0;
 	memset(leds_state, 0, sizeof(leds_state));
-pthread_mutex_init(&leds_mutex, NULL);
+	pthread_mutex_init(&leds_mutex, NULL);
 }
 
 void leds_copy_state(uint8_t state[][LED_COUNT], bool* enabled) {
@@ -40,3 +43,6 @@ void leds_dim_down(void) {
 	}
 	pthread_mutex_unlock(&leds_mutex);
 }
+
+// UART
+

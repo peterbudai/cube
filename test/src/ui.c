@@ -8,7 +8,6 @@
 #include <GL/glut.h>
 
 #include "io.h"
-#include "mcu.h"
 
 #define DIM_X 0
 #define DIM_ROW 0

@@ -1,3 +1,3 @@
 file out/firmware.elf
-target remote localhost:1234
+target remote localhost:28233
 
