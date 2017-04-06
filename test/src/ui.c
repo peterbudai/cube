@@ -21,12 +21,13 @@
 float LED_DIM[DIM_MAX] = {0.8, 1, 0.8};
 float LED_OFF[DIM_MAX] = {0.6, 1, 0.6};
 
+#define DRAW_FPS 50
+uint64_t draw_count = 0;
+
 uint64_t last_time = 0;
 uint64_t last_ticks = 0;
 uint64_t last_draw = 0;
 uint64_t last_uart[2] = {0, 0};
-
-uint64_t draw_count = 0;
 char status_lines[3][512] = {"", "", ""};
 
 int rotate_x = 11, rotate_y = -23;
@@ -191,13 +192,15 @@ static void timer_callback(int value __attribute__((unused))) {
 		uint64_t elapsed_draw = draw_count - last_draw;
 
 		uint64_t current_uart[2];
-		uart_get_counts(current_uart);
+		uint64_t current_drop[2];
+		uart_get_counts(current_uart, current_drop);
 
 		float real = (float)current_time / 1000;
 		float virt = (float)mcu_ticks / MCU_FREQ;
 		float cps = (float)elapsed_ticks / elapsed_time / 1000;
-		float ratio = (float)elapsed_ticks / MCU_FREQ * 100;
+		float cratio = (float)elapsed_ticks / MCU_FREQ * 100;
 		float fps = (float)elapsed_draw / elapsed_time * 1000;
+		float fratio = fps / DRAW_FPS * 100;
 		float bps[2];
 
 		for(int i = 0; i < 2; ++i) {
@@ -209,13 +212,15 @@ static void timer_callback(int value __attribute__((unused))) {
 		last_ticks = mcu_ticks;
 		last_draw = draw_count;
 
-		snprintf(status_lines[0], 512, "Real time: %.1f s, Virtual time: %.1f s, CPU speed: %.2f MHz (%.1f %%)", real, virt, cps, ratio);
-		snprintf(status_lines[1], 512, "UART in: %lu B (%.1f Bps), UART out: %lu B (%.1f Bps)", current_uart[UART_INPUT], bps[UART_INPUT], current_uart[UART_OUTPUT], bps[UART_OUTPUT]);
-		snprintf(status_lines[2], 512, "Display: %.2f FPS", fps);
+		snprintf(status_lines[0], 512, "Real time: %.1f s, Virtual time: %.1f s, CPU speed: %.2f MHz (%.1f %%)", real, virt, cps, cratio);
+		snprintf(status_lines[1], 512, "UART in: %lu B (%.1f Bps), dropped: %lu B, UART out: %lu B (%.1f Bps), dropped: %lu B",
+				current_uart[UART_INPUT], bps[UART_INPUT], current_drop[UART_INPUT],
+				current_uart[UART_OUTPUT], bps[UART_OUTPUT], current_drop[UART_OUTPUT]);
+		snprintf(status_lines[2], 512, "Display: %.2f FPS (%.1f %%)", fps, fratio);
 	}
 
 	glutPostRedisplay();
-	glutTimerFunc(1000 / 50, timer_callback, 0);
+	glutTimerFunc(1000 / DRAW_FPS, timer_callback, 0);
 }
 
 void ui_init(int* argc, char** argv) {

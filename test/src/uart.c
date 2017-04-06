@@ -7,25 +7,54 @@
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <errno.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "io.h"
 
 pthread_t uart_thread;
 int uart_socket = -1;
 
-static void* uart_run(void* args) {
+static void* uart_run(void* args __attribute__((unused))) {
 	while(true) {
 		struct sockaddr_in client_addr;
 		socklen_t client_addr_len = sizeof(client_addr);
 		int client_socket = accept(uart_socket, (struct sockaddr*)&client_addr, &client_addr_len);
 		printf("UART peer connected from %s:%d\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port);
 
-		char client_message[UART_BUFFER_SIZE];
-		int client_message_size = 0;
-		while((client_message_size = recv(client_socket, client_message, sizeof(client_message), 0)) > 0) {
-			uart_put(UART_INPUT, client_message, client_message_size);
+		while(true) {
+			char buf[UART_BUFFER_SIZE];
+			size_t ilen = 0;
+			ssize_t olen = -1;
+
+			// Transfer from outside to MCU
+			ilen = sizeof(buf);
+			olen = recv(client_socket, buf, ilen, MSG_DONTWAIT);
+			if(olen < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
+				printf("Error on receiving UART data: %d\n", errno);
+				break;
+			}
+			if(olen == 0) {
+				printf("UART connection terminated\n");
+				break;
+			}
+			if(olen > 0) {
+				uart_push_back(UART_INPUT, (uint8_t*)buf, (size_t)olen);
+			}
+
+			// Transfer from MCU to outside
+			ilen = uart_peek_front(UART_OUTPUT, (uint8_t*)buf, sizeof(buf));
+			olen = send(client_socket, buf, ilen, MSG_DONTWAIT);
+			if(olen < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
+				printf("Error on sending UART data: %d\n", errno);
+				break;
+			}
+			if(olen > 0) {
+				uart_pop_front(UART_INPUT, (size_t)olen);
+			}
 		}
+		close(client_socket);
 	}
 
 	return NULL;

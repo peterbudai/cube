@@ -49,36 +49,69 @@ typedef struct {
 	size_t size;
 	size_t start;
 	uint64_t count;
+	uint64_t dropped;
 } uart_buffer_t;
 
 uart_buffer_t uart_buffers[2];
 pthread_mutex_t uart_mutex;
 
-void uart_get_counts(uint64_t* counts) {
+void uart_get_counts(uint64_t* counts, uint64_t* drops) {
 	pthread_mutex_lock(&uart_mutex);
 	for(size_t i = UART_INPUT; i <= UART_OUTPUT; ++i) {
 		counts[i] = uart_buffers[i].count;
+		drops[i] = uart_buffers[i].dropped;
 	}
 	pthread_mutex_unlock(&uart_mutex);
 }
 
-void uart_put(uart_dir_t dir, uint8_t* data, size_t count) {
+void uart_push_back(uart_dir_t dir, uint8_t* data, size_t count) {
 	pthread_mutex_lock(&uart_mutex);
+	uart_buffer_t* buf = &(uart_buffers[dir]);
+	size_t end = buf->start + buf->size % UART_BUFFER_SIZE;
 	for(size_t i = 0; i < count; ++i) {
-		uart_buffer_t* buf = &(uart_buffers[dir]);
-		buf->data[buf->start++] = data[i];
-		if(buf->start >= UART_BUFFER_SIZE) {
-			buf->start = 0;
+		buf->data[end++] = data[i];
+		if(end == UART_BUFFER_SIZE) {
+			end = 0;
 		}
 		if(buf->size < UART_BUFFER_SIZE) {
 			buf->size++;
+		} else {
+			buf->dropped++;
+			if(buf->start++ == UART_BUFFER_SIZE) {
+				buf->start = 0;
+			}
 		}
 		buf->count++;
 	}
 	pthread_mutex_unlock(&uart_mutex);
 }
 
-void uart_get(uart_dir_t dir, uint8_t* data, size_t size) {
+size_t uart_peek_front(uart_dir_t dir, uint8_t* data, size_t size) {
+	pthread_mutex_lock(&uart_mutex);
+	uart_buffer_t* buf = &(uart_buffers[dir]);
+	if(size > buf->size) {
+		size = buf->size;
+	}
+	size_t cur = buf->start;
+	for(size_t i = 0; i < size; ++i) {
+		data[i] = buf->data[cur++];
+		if(cur >= UART_BUFFER_SIZE) {
+			cur = 0;
+		}
+	}
+	pthread_mutex_unlock(&uart_mutex);
+	return size;
+}
+
+void uart_pop_front(uart_dir_t dir, size_t count) {
+	pthread_mutex_lock(&uart_mutex);
+	uart_buffer_t* buf = &(uart_buffers[dir]);
+	if(count > buf->size) {
+		count = buf->size;
+	}
+	buf->size -= count;
+	buf->start = (buf->start + count) % UART_BUFFER_SIZE;
+	pthread_mutex_unlock(&uart_mutex);
 }
 
 void io_init(void) {
