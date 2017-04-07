@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include <simavr/avr_ioport.h>
+#include <simavr/avr_uart.h>
 #include <simavr/sim_avr.h>
 #include <simavr/sim_elf.h>
 #include <simavr/sim_gdb.h>
@@ -22,39 +23,60 @@
 // Global variables
 avr_t* mcu = NULL;
 pthread_t mcu_thread;
+
+avr_irq_t* input_irq = NULL;
 uint8_t shift_reg[LED_COUNT];
 
-static void* mcu_run(void* args) {
+static void* mcu_run(void* args __attribute__((unused))) {
 	while(true) {
 		++mcu_ticks;
-		avr_run((avr_t*)args);
+		avr_run(mcu);
 	}
 	return NULL;
 }
 
-static void handle_enable(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
+static void handle_leds_enable(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
 	if(value == 0) {
 		leds_dim_up();
 	}
 }
 
-static void handle_shift(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param) {
-	if(value) {
-		avr_t* avr = (avr_t*)param;
-		uint8_t row_data = (avr->data[PORTD] & 0xF0) | (avr->data[PORTC] & 0x0F);
+static void handle_leds_shift(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
+	if(value != 0) {
+		uint8_t row_data = (mcu->data[PORTD] & 0xF0) | (mcu->data[PORTC] & 0x0F);
 		for(int i = 0; i < 8; ++i) {
 			shift_reg[i] = (shift_reg[i] << 1) | ((row_data >> i) & 0x01);
 		}
 	}
 }
 
-static void handle_store(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param) {
-	if(value) {
-		uint8_t layer = ((avr_t*)param)->data[PORTB] & 0x07;
+static void handle_leds_store(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
+	if(value != 0) {
+		uint8_t layer = mcu->data[PORTB] & 0x07;
 		leds_set_layer(layer, shift_reg);
 	}
 }
 
+static void handle_uart_output(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
+	printf("out\n");
+	uint8_t data = value;
+	uart_push_back(UART_OUTPUT, &data, sizeof(data));
+}
+
+static void handle_uart_xon(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
+	printf("xon %u\n", value);
+	if(value == 1) {
+		uint8_t data;
+		if(uart_get_front(UART_INPUT, &data)) {
+			printf("data to uart: %02x\n", data);
+			avr_raise_irq(input_irq, data);
+		}
+	}
+}
+
+static void handle_uart_xoff(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
+	printf("xoff %u\n", value);
+}
 
 void mcu_init(int argc, char** argv) {
 	memset(shift_reg, 0, sizeof(shift_reg));
@@ -90,9 +112,14 @@ void mcu_init(int argc, char** argv) {
 		}
 	}
 
-	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('D'), 3), handle_enable, mcu);
-	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('C'), 4), handle_shift, mcu);
-	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('C'), 5), handle_store, mcu);
+	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('D'), 3), handle_leds_enable, NULL);
+	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('C'), 4), handle_leds_shift, NULL);
+	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('C'), 5), handle_leds_store, NULL);
+
+	input_irq = avr_io_getirq(mcu, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_INPUT);
+	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT), handle_uart_output, NULL);
+	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUT_XON), handle_uart_xon, NULL);
+	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUT_XOFF), handle_uart_xoff, NULL);
 }
 
 void mcu_start(void) {

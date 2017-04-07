@@ -26,6 +26,7 @@ bool uart_empty(uart_dir_t dir);
 void uart_push_back(uart_dir_t dir, uint8_t* data, size_t count);
 size_t uart_peek_front(uart_dir_t dir, uint8_t* data, size_t size);
 void uart_pop_front(uart_dir_t dir, size_t count);
+bool uart_get_front(uart_dir_t dir, uint8_t* data);
 
 void io_init(void);
 

@@ -121,6 +121,21 @@ void uart_pop_front(uart_dir_t dir, size_t count) {
 	pthread_mutex_unlock(&uart_mutex);
 }
 
+bool uart_get_front(uart_dir_t dir, uint8_t* data) {
+	pthread_mutex_lock(&uart_mutex);
+	uart_buffer_t* buf = &(uart_buffers[dir]);
+	bool res = (buf->size > 0);
+	if(res) {
+		*data = buf->data[buf->start++];
+		if(buf->start >= UART_BUFFER_SIZE) {
+			buf->start = 0;
+		}
+		buf->size--;
+	}
+	pthread_mutex_unlock(&uart_mutex);
+	return res;
+}
+
 void io_init(void) {
 	memset(leds_state, 0, sizeof(leds_state));
 	pthread_mutex_init(&leds_mutex, NULL);

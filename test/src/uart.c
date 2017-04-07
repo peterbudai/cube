@@ -29,32 +29,27 @@ static void* uart_run(void* args __attribute__((unused))) {
 			ssize_t olen = -1;
 
 			// Wait for network event to happen
-			fd_set read_fd, write_fd, error_fd;
+			fd_set read_fd;
 			FD_ZERO(&read_fd);
-			FD_ZERO(&write_fd);
-			FD_ZERO(&error_fd);
 			FD_SET(client_socket, &read_fd);
+
+			fd_set write_fd;
+			FD_ZERO(&write_fd);
 			if(!uart_empty(UART_OUTPUT)) {
 				FD_SET(client_socket, &write_fd);
 			}
-			FD_SET(client_socket, &error_fd);
 
 			struct timeval timeout;
 			timeout.tv_sec = 0;
 			timeout.tv_usec = 100000;
-			olen = select(client_socket + 1, &read_fd, &write_fd, &error_fd, &timeout);
+
+			olen = select(client_socket + 1, &read_fd, &write_fd, NULL, &timeout);
 			if(olen < 0) {
 				printf("Error while waiting for UART data: %d\n", errno);
 				break;
 			}
 			if(olen == 0) {
 				continue;
-			}
-
-			// Handle network error
-			if(FD_ISSET(client_socket, &error_fd)) {
-				printf("Error in UART connection\n");
-				break;
 			}
 
 			// Transfer from outside to MCU
