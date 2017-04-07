@@ -28,30 +28,63 @@ static void* uart_run(void* args __attribute__((unused))) {
 			size_t ilen = 0;
 			ssize_t olen = -1;
 
-			// Transfer from outside to MCU
-			ilen = sizeof(buf);
-			olen = recv(client_socket, buf, ilen, MSG_DONTWAIT);
-			if(olen < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
-				printf("Error on receiving UART data: %d\n", errno);
+			// Wait for network event to happen
+			fd_set read_fd, write_fd, error_fd;
+			FD_ZERO(&read_fd);
+			FD_ZERO(&write_fd);
+			FD_ZERO(&error_fd);
+			FD_SET(client_socket, &read_fd);
+			if(!uart_empty(UART_OUTPUT)) {
+				FD_SET(client_socket, &write_fd);
+			}
+			FD_SET(client_socket, &error_fd);
+
+			struct timeval timeout;
+			timeout.tv_sec = 0;
+			timeout.tv_usec = 100000;
+			olen = select(client_socket + 1, &read_fd, &write_fd, &error_fd, &timeout);
+			if(olen < 0) {
+				printf("Error while waiting for UART data: %d\n", errno);
 				break;
 			}
 			if(olen == 0) {
-				printf("UART connection terminated\n");
+				continue;
+			}
+
+			// Handle network error
+			if(FD_ISSET(client_socket, &error_fd)) {
+				printf("Error in UART connection\n");
 				break;
 			}
-			if(olen > 0) {
-				uart_push_back(UART_INPUT, (uint8_t*)buf, (size_t)olen);
+
+			// Transfer from outside to MCU
+			if(FD_ISSET(client_socket, &read_fd)) {
+				ilen = sizeof(buf);
+				olen = recv(client_socket, buf, ilen, MSG_DONTWAIT);
+				if(olen < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
+					printf("Error on receiving UART data: %d\n", errno);
+					break;
+				}
+				if(olen == 0) {
+					printf("UART connection terminated\n");
+					break;
+				}
+				if(olen > 0) {
+					uart_push_back(UART_INPUT, (uint8_t*)buf, (size_t)olen);
+				}
 			}
 
 			// Transfer from MCU to outside
-			ilen = uart_peek_front(UART_OUTPUT, (uint8_t*)buf, sizeof(buf));
-			olen = send(client_socket, buf, ilen, MSG_DONTWAIT);
-			if(olen < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
-				printf("Error on sending UART data: %d\n", errno);
-				break;
-			}
-			if(olen > 0) {
-				uart_pop_front(UART_INPUT, (size_t)olen);
+			if(FD_ISSET(client_socket, &write_fd)) {
+				ilen = uart_peek_front(UART_OUTPUT, (uint8_t*)buf, sizeof(buf));
+				olen = send(client_socket, buf, ilen, MSG_DONTWAIT);
+				if(olen < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
+					printf("Error on sending UART data: %d\n", errno);
+					break;
+				}
+				if(olen > 0) {
+					uart_pop_front(UART_INPUT, (size_t)olen);
+				}
 			}
 		}
 		close(client_socket);

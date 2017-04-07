@@ -22,6 +22,7 @@ typedef enum {
 } uart_dir_t;
 
 void uart_get_counts(uint64_t* counts, uint64_t* drops);
+bool uart_empty(uart_dir_t dir);
 void uart_push_back(uart_dir_t dir, uint8_t* data, size_t count);
 size_t uart_peek_front(uart_dir_t dir, uint8_t* data, size_t size);
 void uart_pop_front(uart_dir_t dir, size_t count);

@@ -64,6 +64,13 @@ void uart_get_counts(uint64_t* counts, uint64_t* drops) {
 	pthread_mutex_unlock(&uart_mutex);
 }
 
+bool uart_empty(uart_dir_t dir) {
+	pthread_mutex_lock(&uart_mutex);
+	bool empty = (uart_buffers[dir].size == 0);
+	pthread_mutex_unlock(&uart_mutex);
+	return empty;
+}
+
 void uart_push_back(uart_dir_t dir, uint8_t* data, size_t count) {
 	pthread_mutex_lock(&uart_mutex);
 	uart_buffer_t* buf = &(uart_buffers[dir]);
