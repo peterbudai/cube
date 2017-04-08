@@ -5,43 +5,35 @@
 #include <avr/sleep.h>
 
 #include "app.h"
+#include "cpu.h"
 #include "cube.h"
 #include "led.h"
-#include "main.h"
-#include "reset.h"
+#include "timer.h"
 #include "usart.h"
 
 //bool job_exit_event;
 //jmp_buf job_exit_point;
-
-void wait(void) {
-	sleep_enable();
-	sei();
-	sleep_cpu();
-	cli();
-	sleep_disable();
-
 //	if(job_exit_event) {
 //		longjmp(job_exit_point, 1);
 //	}
-}
 
 int main(void)
 {
-	// Init output ports
-	led_init();
-	cube_init();
-
-	// Blink LED
-	//led_blink(200);
-
-	usart_init();
 	apps_init();
 
+	// Init peripherials and interrup handlers
+	led_init();
+	cube_init();
+	timer_init();
+	usart_init();
+
+	// Blink LED
+	led_blink(200);
+
+	// Start running background operations
+	bool enabled = true;
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	sei();
-
-	bool enabled = true;
 
 	while(true) {
 		/*
@@ -67,13 +59,9 @@ int main(void)
 			usart_drop_received_message();
 		}
 		*/
-		if(enabled) {
-			apps[1]();
-		}
+		apps[1]();
 
-		sleep_enable();
-		sleep_cpu();
-		sleep_disable();
+		cpu_sleep();
 	}
 
 	cli();
@@ -86,8 +74,8 @@ int main(void)
 	led_blink(200);
 
 	if(enabled) {
-		perform_reset();
+		cpu_reset();
 	} else {
-		perform_halt();
+		cpu_halt();
 	}
 }

@@ -1,11 +1,10 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/sleep.h>
 #include <util/atomic.h>
 
+#include "cpu.h"
 #include "cube.h"
 #include "draw.h"
-#include "main.h"
 
 // Port numbers and bits.
 #define ROWH_PORT PORTD
@@ -41,7 +40,6 @@
 // Helper macros
 #define frame_address(f) (frame_buffer + (f) * CUBE_FRAME_SIZE)
 #define frame_next(f) ((f) >= CUBE_FRAME_BUFFER_COUNT - 1 ? 0 : (f) + 1)
-#define frame_free() (edited_frame < current_frame ? current_frame - edited_frame : CUBE_FRAME_BUFFER_COUNT - (edited_frame - current_frame))
 
 // Global variables.
 uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT] __attribute__((section(".noinit")));
@@ -127,23 +125,23 @@ void cube_disable(void)
 	}
 }
 
-
 uint8_t cube_get_free_frames(void) {
 	uint8_t free_count;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		free_count = frame_free() - 1;
+		if(edited_frame < current_frame) {
+			free_count = current_frame - edited_frame;
+		} else {
+			free_count = CUBE_FRAME_BUFFER_COUNT - (edited_frame - current_frame);
+		}
 	}
-	return free_count;
+	return free_count - 1;
 }
 
 uint8_t* cube_advance_frame(void) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		uint8_t next_frame = frame_next(edited_frame);
 		while(next_frame == current_frame) {
-			sleep_enable();
-			sei();
-			sleep_cpu();
-
+			cpu_sleep();
 			next_frame = frame_next(edited_frame);
 		}
 		edited_frame = next_frame;
