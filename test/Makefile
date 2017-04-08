@@ -6,7 +6,7 @@ TARGET_DIR = out
 TARGET = simulator
 
 CDEFS = -DMCU_FREQ=$(FREQ) -DMCU_NAME=\"$(MCU)\"
-CFLAGS = -g -std=gnu11 -Wall -Wextra -O3
+CFLAGS = -g -std=gnu11 -Wall -Wextra -O3 -g
 LDFLAGS = -lpthread -lsimavr -lGL -lGLU -lglut
 
 # ---------------------------------------------------------------------------
@@ -30,10 +30,10 @@ ALL_LDFLAGS = $(LDFLAGS)
 build: $(TARGET_DIR)/$(TARGET)
 
 run: $(TARGET_DIR)/$(TARGET)
-	$< -u $(UART_PORT)
+	$< -u $(UART_PORT) $(EXTRA_ARGS)
 
 debug: $(TARGET_DIR)/$(TARGET)
-	$< -u $(UART_PORT) -g $(GDB_PORT)
+	$< -u $(UART_PORT) -g $(GDB_PORT) $(EXTRA_ARGS)
 
 clean:
 	$(REMOVE) $(TARGET_DIR)

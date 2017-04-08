@@ -1,5 +1,6 @@
 #include "io.h"
 
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -45,6 +46,7 @@ void leds_dim_down(void) {
 // UART
 
 typedef struct {
+	atomic_bool empty;
 	uint8_t data[UART_BUFFER_SIZE];
 	size_t size;
 	size_t start;
@@ -65,10 +67,7 @@ void uart_get_counts(uint64_t* counts, uint64_t* drops) {
 }
 
 bool uart_empty(uart_dir_t dir) {
-	pthread_mutex_lock(&uart_mutex);
-	bool empty = (uart_buffers[dir].size == 0);
-	pthread_mutex_unlock(&uart_mutex);
-	return empty;
+	return atomic_load(&(uart_buffers[dir].empty));
 }
 
 void uart_push_back(uart_dir_t dir, uint8_t* data, size_t count) {
@@ -89,6 +88,9 @@ void uart_push_back(uart_dir_t dir, uint8_t* data, size_t count) {
 			}
 		}
 		buf->count++;
+	}
+	if(count > 0) {
+		atomic_store(&(buf->empty), false);
 	}
 	pthread_mutex_unlock(&uart_mutex);
 }
@@ -116,7 +118,9 @@ void uart_pop_front(uart_dir_t dir, size_t count) {
 	if(count > buf->size) {
 		count = buf->size;
 	}
-	buf->size -= count;
+	if((buf->size -= count) == 0) {
+		atomic_store(&(buf->empty), true);
+	}
 	buf->start = (buf->start + count) % UART_BUFFER_SIZE;
 	pthread_mutex_unlock(&uart_mutex);
 }
@@ -130,7 +134,9 @@ bool uart_get_front(uart_dir_t dir, uint8_t* data) {
 		if(buf->start >= UART_BUFFER_SIZE) {
 			buf->start = 0;
 		}
-		buf->size--;
+		if(--buf->size == 0) {
+			atomic_store(&(buf->empty), true);
+		}
 	}
 	pthread_mutex_unlock(&uart_mutex);
 	return res;
@@ -141,6 +147,8 @@ void io_init(void) {
 	pthread_mutex_init(&leds_mutex, NULL);
 
 	memset(uart_buffers, 0, sizeof(uart_buffers));
+	uart_buffers[UART_INPUT].empty = ATOMIC_VAR_INIT(true);
+	uart_buffers[UART_OUTPUT].empty = ATOMIC_VAR_INIT(true);
 	pthread_mutex_init(&uart_mutex, NULL);
 }
 
