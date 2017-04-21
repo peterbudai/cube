@@ -23,8 +23,8 @@ void app_test(void) {
 			i = 0;
 			if(++m >= 3) {
 				m = 0;
-				if(++c == 127) {
-					c = 32;
+				if(++c == 'Z' + 1) {
+					c = 'A';
 				}
 				font_load(f, c);
 			}

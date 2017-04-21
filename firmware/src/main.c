@@ -36,32 +36,7 @@ int main(void)
 	sei();
 
 	while(true) {
-		/*
-		uint8_t len = usart_get_received_message_length();
-		if(len > 0) {
-			uint8_t cmd = usart_get_received_message_byte(0);
-			if(cmd == 0x01) {
-				usart_send_message_byte(0x81);
-			} else if(cmd == 0x02) {
-				if(enabled) {
-					cube_disable();
-					enabled = false;
-				} else {
-					cube_enable();
-					enabled = true;
-				}
-				uint8_t reply[2] = { 0x82, enabled };
-				usart_send_message_buf(reply, 2);
-			} else if(cmd == 0x7F) {
-				enabled = usart_get_received_message_byte(1);
-				break;
-			}
-			usart_drop_received_message();
-		}
-		*/
 		apps[1]();
-
-		cpu_sleep();
 	}
 
 	cli();

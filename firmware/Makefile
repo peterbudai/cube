@@ -11,7 +11,7 @@ CFLAGS = -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-e
 LDFLAGS = -Wl,-Map=$(TARGET_DIR)/$(TARGET).map,--cref -lm
 
 AVRDUDE_PROGRAMMER = usbtiny
-AVRDUDE_PORT = com1    # programmer connected to serial device
+AVRDUDE_PORT = usb:001:004    # programmer connected to serial device
 
 # ---------------------------------------------------------------------------
 
@@ -37,8 +37,8 @@ GENDEPFLAGS = -Wp,-M,-MP,-MT,$(TARGET_DIR)/$(*F).o,-MF,$(TARGET_DIR)/$(@F).d
 ALL_CFLAGS = -mmcu=$(MCU) -I$(SRC_DIR) $(CFLAGS) $(CDEFS) $(GENDEPFLAGS)
 ALL_LDFLAGS = $(LDFLAGS)
 
-AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
-AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
+AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET_DIR)/$(TARGET).hex
+AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET_DIR)/$(TARGET).eep
 AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER)
 
 # ---------------------------------------------------------------------------
@@ -58,13 +58,13 @@ hexsize: $(TARGET_DIR)/$(TARGET).hex $(TARGET_DIR)/$(TARGET).eep
 	$(SIZE) --target=$(FORMAT) $^
 
 # Program the device.  
-program: 
+program: $(TARGET_DIR)/$(TARGET).hex $(TARGET_DIR)/$(TARGET).eep
 	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH) $(AVRDUDE_WRITE_EEPROM)
 
-program_flash: $(TARGET_DIR)/$(TARGET).hex $(TARGET_DIR)/$(TARGET).eep
+program_flash: $(TARGET_DIR)/$(TARGET).hex
 	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH)
 
-program_eeprom: $(TARGET_DIR)/$(TARGET).hex $(TARGET_DIR)/$(TARGET).eep
+program_eeprom: $(TARGET_DIR)/$(TARGET).eep
 	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_EEPROM)
 
 # Target: clean project.
@@ -79,7 +79,7 @@ $(TARGET_DIR):
 
 # Create final output files (.hex, .eep) from ELF output file.
 $(TARGET_DIR)/%.hex: $(TARGET_DIR)/%.elf | $(TARGET_DIR)
-	$(OBJCOPY) -O $(FORMAT) -R .eeprom $< $@
+	$(OBJCOPY) -O $(FORMAT) -j .text -j .data $< $@
 
 $(TARGET_DIR)/%.eep: $(TARGET_DIR)/%.elf | $(TARGET_DIR)
 	$(OBJCOPY) -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 -O $(FORMAT) $< $@
