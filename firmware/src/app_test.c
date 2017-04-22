@@ -5,6 +5,7 @@
 #include "cube.h"
 #include "draw.h"
 #include "font.h"
+#include "timer.h"
 
 void app_test(void) {
 	uint8_t m = 0;
@@ -16,7 +17,7 @@ void app_test(void) {
 	cube_enable();
 
 	while(true) {
-		uint8_t* frame = cube_advance_frame();
+		uint8_t* frame = cube_advance_frame(TIMER_INFINITE);
 		clear_frame(frame);
 		set_plane(frame, m, i, f);
 		if(++i >= 8) {
@@ -30,6 +31,6 @@ void app_test(void) {
 			}
 		}
 
-		_delay_ms(50);
+		_delay_ms(250);
 	}
 }

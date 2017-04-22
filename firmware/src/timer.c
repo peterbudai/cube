@@ -30,7 +30,7 @@ void timer_init(void)
 	timer_value = 0;
 }
 
-uint16_t timer_get(void) {
+uint16_t timer_get_current(void) {
 	uint16_t value;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		value = timer_value;
@@ -38,13 +38,44 @@ uint16_t timer_get(void) {
 	return value;
 }
 
+static uint16_t timer_get_elapsed_inner(uint16_t since) {
+	return since <= timer_value ? timer_value - since : UINT16_MAX - since + timer_value;
+}
+
+uint16_t timer_get_elapsed(uint16_t since) {
+	uint16_t elapsed;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		elapsed = timer_get_elapsed_inner(since);
+	}
+	return elapsed;
+}
+
+static bool timer_has_elapsed_inner(uint16_t since, uint16_t ms) {
+	return (ms != TIMER_INFINITE) && (timer_get_elapsed_inner(since) >= ms);
+}
+
+bool timer_has_elapsed(uint16_t since, uint16_t ms) {
+	bool result;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		result = timer_has_elapsed_inner(since, ms);
+	}
+	return result;
+}
+
+static void timer_wait_elapsed_inner(uint16_t since, uint16_t ms) {
+	while(!timer_has_elapsed_inner(since, ms)) {
+		cpu_sleep();
+	}
+}
+
+void timer_wait_elapsed(uint16_t since, uint16_t ms) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		timer_wait_elapsed_inner(since, ms);
+	}
+}
+
 void timer_wait(uint16_t ms) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		uint16_t start = timer_value;
-		uint16_t now = timer_value;
-		while(timer_elapsed(start, now) < ms) {
-			cpu_sleep();
-			now = timer_value;
-		}
+		timer_wait_elapsed_inner(timer_value, ms);
 	}
 }

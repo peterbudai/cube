@@ -216,7 +216,7 @@ static void timer_callback(int value __attribute__((unused))) {
 		snprintf(status_lines[1], 512, "UART in: %lu B (%.1f Bps), dropped: %lu B, UART out: %lu B (%.1f Bps), dropped: %lu B",
 				current_uart[UART_INPUT], bps[UART_INPUT], current_drop[UART_INPUT],
 				current_uart[UART_OUTPUT], bps[UART_OUTPUT], current_drop[UART_OUTPUT]);
-		snprintf(status_lines[2], 512, "Display: %.2f FPS (%.1f %%)", fps, fratio);
+		snprintf(status_lines[2], 512, "H rotation: %d deg, V rotation: %d deg, Frame rate: %.2f FPS (%.1f %%)", rotate_y, rotate_x, fps, fratio);
 	}
 
 	glutPostRedisplay();

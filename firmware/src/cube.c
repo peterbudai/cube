@@ -1,10 +1,13 @@
+#include "cube.h"
+
+#include <stdlib.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/atomic.h>
 
 #include "cpu.h"
-#include "cube.h"
 #include "draw.h"
+#include "timer.h"
 
 // Port numbers and bits.
 #define ROWH_PORT PORTD
@@ -41,13 +44,14 @@
 #define frame_address(f) (frame_buffer + (f) * CUBE_FRAME_SIZE)
 #define frame_next(f) ((f) >= CUBE_FRAME_BUFFER_COUNT - 1 ? 0 : (f) + 1)
 
-// Global variables.
+// Global variables
 uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT] __attribute__((section(".noinit")));
 uint8_t current_layer __attribute__((section(".noinit")));
 uint8_t current_repeat __attribute__((section(".noinit")));
 uint8_t current_frame __attribute__((section(".noinit")));
 uint8_t edited_frame __attribute__((section(".noinit")));
 
+// Timer interrupt handler for periodic cube refresh
 ISR(TIMER0_COMPA_vect) {
 	// Display the current layer of the current frame
 	uint8_t* layer = frame_address(current_frame) + layer_address(current_layer);
@@ -137,15 +141,20 @@ uint8_t cube_get_free_frames(void) {
 	return free_count - 1;
 }
 
-uint8_t* cube_advance_frame(void) {
+uint8_t* cube_advance_frame(uint16_t wait_ms) {
+	uint8_t* ret = NULL;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		uint16_t start_time = timer_get_current();
 		uint8_t next_frame = frame_next(edited_frame);
-		while(next_frame == current_frame) {
+		while(next_frame == current_frame && !timer_has_elapsed(start_time, wait_ms)) {
 			cpu_sleep();
 			next_frame = frame_next(edited_frame);
 		}
-		edited_frame = next_frame;
+		if(next_frame != current_frame) {
+			edited_frame = next_frame;
+			ret = frame_address(edited_frame);
+		}
 	}
-	return frame_address(edited_frame);
+	return ret;
 }
 

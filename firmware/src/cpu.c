@@ -1,6 +1,4 @@
-/// @file cpu.c
-/// @copyright (C) 2016 Peter Budai
-/// Microcontroller CPU state handler routines.
+#include "cpu.h"
 
 #include <stdbool.h>
 #include <avr/io.h>
@@ -9,10 +7,8 @@
 #include <avr/wdt.h>
 #include <util/atomic.h>
 
-#include "cpu.h"
-
 void handle_reset(void) {
-	// Clear reser flag and disable watchdog
+	// Clear reset flag and disable watchdog, so it won't reset again in 15 ms
 	MCUSR = 0;
 	wdt_disable();
 	cli();
@@ -28,6 +24,8 @@ void cpu_halt(void) {
 	cli();
 	sleep_enable();
 	while(true) {
+		// Sleeping with interrupts disabled makes CPU never wake again until
+		// hardware or watchdog reset
 		sleep_cpu();
 	}
 }
