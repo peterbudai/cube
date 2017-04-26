@@ -78,7 +78,7 @@ static void* uart_run(void* args __attribute__((unused))) {
 					break;
 				}
 				if(olen > 0) {
-					uart_pop_front(UART_INPUT, (size_t)olen);
+					uart_pop_front(UART_OUTPUT, (size_t)olen);
 				}
 			}
 		}

@@ -57,10 +57,14 @@ typedef enum {
 	OUTPUT_FRAME_END
 } output_state_t;
 
+// Output message queue
 usart_message_t output_buffer[USART_OUTPUT_BUFFER_COUNT] __attribute((section(".noinit")));
+// Number of messages ready to send
+uint8_t output_count __attribute((section(".noinit")));
+// Index of the message being transmitted
+uint8_t output_index __attribute((section(".noinit")));
+// Message transmission state
 output_state_t output_state __attribute((section(".noinit")));
-uint8_t output_read_index __attribute((section(".noinit")));
-uint8_t output_write_index __attribute((section(".noinit")));
 uint8_t output_length __attribute((section(".noinit")));
 uint8_t output_crc __attribute((section(".noinit")));
 
@@ -181,13 +185,13 @@ ISR(USART_UDRE_vect) {
 	uint8_t data;
 	switch(output_state) {
 		case OUTPUT_IDLE:
-			if(output_read_index == output_write_index) {
+			if(output_count == 0) {
 				// We have nothing to send, turn off transmission
 				usart_send_off();
 				break;
 			}
 			// Start sending the header
-			data = *((uint8_t*)&output_buffer[output_read_index]);
+			data = *((uint8_t*)&output_buffer[output_index]);
 			output_length = 0;
 			output_crc = _crc8_ccitt_update(0x00, data);
 			if(data == USART_FRAME_BYTE || data == USART_ESCAPE_BYTE) {
@@ -200,10 +204,10 @@ ISR(USART_UDRE_vect) {
 			goto OUTPUT_HEADER;
 		case OUTPUT_IDLE_ESCAPE:
 			// Send the escaped data
-			data = *((uint8_t*)&output_buffer[output_read_index]) ^ USART_ESCAPE_MASK;
+			data = *((uint8_t*)&output_buffer[output_index]) ^ USART_ESCAPE_MASK;
 		OUTPUT_HEADER:
 			UDR0 = data;
-			if(output_buffer[output_read_index].length == 0) {
+			if(output_buffer[output_index].length == 0) {
 				// Message without body, CRC comes next
 				output_state = OUTPUT_CRC;
 			} else {
@@ -212,7 +216,7 @@ ISR(USART_UDRE_vect) {
 			break;
 		case OUTPUT_MESSAGE:
 			// Send next message body byte
-			data = output_buffer[output_read_index].body[output_length];
+			data = output_buffer[output_index].body[output_length];
 			output_crc = _crc8_ccitt_update(output_crc, data);
 			if(data == USART_FRAME_BYTE || data == USART_ESCAPE_BYTE) {
 				// Body byte should be escaped, send espace byte first
@@ -223,10 +227,10 @@ ISR(USART_UDRE_vect) {
 			goto OUTPUT_BODY;
 		case OUTPUT_MESSAGE_ESCAPE:
 			// Send escaped data byte
-			data = output_buffer[output_read_index].body[output_length] ^ USART_ESCAPE_MASK;
+			data = output_buffer[output_index].body[output_length] ^ USART_ESCAPE_MASK;
 		OUTPUT_BODY:
 			UDR0 = data;
-			if(++output_length == output_buffer[output_read_index].length) {
+			if(++output_length == output_buffer[output_index].length) {
 				// Whole message was sent, CRC comes next
 				output_state = OUTPUT_CRC;
 			} else {
@@ -234,25 +238,27 @@ ISR(USART_UDRE_vect) {
 			}
 			break;
 		case OUTPUT_CRC:
-			if(output_crc == USART_FRAME_BYTE || output_crc == USART_ESCAPE_BYTE) {
+			data = output_crc;
+			if(data == USART_FRAME_BYTE || data == USART_ESCAPE_BYTE) {
 				// CRC byte should be escaped, send espace byte first
 				UDR0 = USART_ESCAPE_BYTE;
 				output_state = OUTPUT_CRC_ESCAPE;
 				break;
 			}
 			// Send CRC byte
-			UDR0 = output_crc;
-			output_state = OUTPUT_FRAME_END;
-			break;
+			goto OUTPUT_FOOTER;
 		case OUTPUT_CRC_ESCAPE:
 			// Send escaped CRC byte
-			UDR0 = output_crc ^ USART_ESCAPE_MASK;
+			data = output_crc ^ USART_ESCAPE_MASK;
+		OUTPUT_FOOTER:
+			UDR0 = data;
+			output_index = next_buffer(output_index, USART_OUTPUT_BUFFER_COUNT);
+			output_count--;
 			output_state = OUTPUT_FRAME_END;
 			break;
 		case OUTPUT_FRAME_END:
 			// Send closing frame byte
 			UDR0 = USART_FRAME_BYTE;
-			output_read_index = next_buffer(output_read_index, USART_OUTPUT_BUFFER_COUNT);
 			output_state = OUTPUT_IDLE;
 			break;
 	}
@@ -272,8 +278,8 @@ void usart_init(void) {
 	input_write_index = 0;
 
 	output_state = OUTPUT_FRAME_END;
-	output_read_index = 0;
-	output_write_index = 0;
+	output_count = 0;
+	output_index = 0;
 
 	// Enable receive via interrupts
 	// Transmit will be enabled as soon as the first message is sent
@@ -304,31 +310,30 @@ usart_message_t* usart_receive_input_message(uint16_t wait_ms) {
 	return ret;
 }
 
-usart_message_t* usart_get_output_message(void) {
+usart_message_t* usart_prepare_output_message(uint16_t wait_ms) {
 	usart_message_t* ret = NULL;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		ret = &output_buffer[output_write_index];
+		uint16_t start_time = timer_get_current();
+		while(output_count == USART_OUTPUT_BUFFER_COUNT && !timer_has_elapsed(start_time, wait_ms)) {
+			cpu_sleep();
+		}
+		if(output_count < USART_OUTPUT_BUFFER_COUNT) {
+			uint8_t edit_index = output_index + output_count;
+			if(edit_index >= USART_OUTPUT_BUFFER_COUNT) {
+				edit_index -= USART_OUTPUT_BUFFER_COUNT;
+			}
+			ret = &output_buffer[edit_index];
+		}
 	}
 	return ret;
 }
 
-usart_message_t* usart_send_output_message(uint16_t wait_ms) {
-	usart_message_t* ret = NULL;
+void usart_send_output_message(void) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		// Turn on transmission interrupt, so the output queue will be emptied eventually
-		usart_send_on();
-
-		uint16_t start_time = timer_get_current();
-		uint8_t next_index = next_buffer(output_write_index, USART_OUTPUT_BUFFER_COUNT);
-		while(next_index == output_read_index && !timer_has_elapsed(start_time, wait_ms)) {
-			cpu_sleep();
-			next_index = next_buffer(output_write_index, USART_OUTPUT_BUFFER_COUNT);
-		}
-		if(next_index != output_read_index) {
-			output_write_index = next_index;
-			ret = &output_buffer[output_write_index];
+		if(output_count++ == 0) {
+			// Turn on transmission interrupt, so the output queue will be emptied eventually
+			usart_send_on();
 		}
 	}
-	return ret;
 }
 

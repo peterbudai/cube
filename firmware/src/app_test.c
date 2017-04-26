@@ -39,12 +39,11 @@ void app_test(void) {
 			font_load(f, c);
 		}
 
-		if(timer_has_elapsed(t, 1000)) {
-			message = usart_get_output_message();
-			message->type = 9;
-			message->length = 1;
+		if(timer_has_elapsed(t, 1000) && (message = usart_prepare_output_message(0)) != NULL) {
+			message->type = 0x9;
+			message->length = 0x1;
 			message->body[0] = cube_get_free_frames();
-			usart_send_output_message(0);
+			usart_send_output_message();
 			t = timer_get_current();
 		}
 	}
