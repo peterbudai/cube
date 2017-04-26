@@ -21,6 +21,8 @@ typedef struct {
 void usart_init(void);
 void usart_stop(void);
 
-usart_message_t* usart_receive_message(uint16_t wait_ms);
+usart_message_t* usart_receive_input_message(uint16_t wait_ms);
+usart_message_t* usart_get_output_message(void);
+usart_message_t* usart_send_output_message(uint16_t wait_ms);
 
 #endif /* USART_H */
