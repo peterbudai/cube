@@ -6,6 +6,7 @@
 #include "draw.h"
 #include "font.h"
 #include "timer.h"
+#include "usart.h"
 
 void app_test(void) {
 	uint8_t m = 0;
@@ -31,6 +32,10 @@ void app_test(void) {
 			}
 		}
 
-		_delay_ms(250);
+		usart_message_t* message = usart_receive_message(250);
+		if(message != NULL && message->type == 1 && message->length == 1) {
+			c = message->body[0];
+			font_load(f, c);
+		}
 	}
 }
