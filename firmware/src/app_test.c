@@ -37,6 +37,7 @@ void app_test(void) {
 		if(message != NULL && usart_get_message_type(*message) == 0x01 && usart_get_message_length(*message) == 1) {
 			c = message->body[0];
 			font_load(f, c);
+			usart_drop_input_message();
 		}
 
 		if(timer_has_elapsed(t, 1000) && (message = usart_prepare_output_message(0)) != NULL) {

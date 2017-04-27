@@ -25,7 +25,8 @@ void usart_init(void);
 void usart_stop(void);
 
 usart_message_t* usart_receive_input_message(uint16_t wait_ms);
+bool usart_drop_input_message(void);
 usart_message_t* usart_prepare_output_message(uint16_t wait_ms);
-void usart_send_output_message(void);
+bool usart_send_output_message(void);
 
 #endif

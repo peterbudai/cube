@@ -21,10 +21,12 @@
 #define usart_receive_on()	UCSR0B |= USART_RECEIVE_BITS
 #define usart_receive_off() UCSR0B &= ~USART_RECEIVE_BITS
 
+// Framing constants
 #define USART_FRAME_BYTE 0x7E
 #define USART_ESCAPE_BYTE 0x7D
 #define USART_ESCAPE_MASK 0x20
 
+// Possible states of the receiver
 typedef enum {
 	// Some error detected, waiting for the next correct frame boundary
 	INPUT_ERROR,
@@ -40,20 +42,34 @@ typedef enum {
 	INPUT_FRAME_END
 } input_state_t;
 
+// Input message queue
 usart_message_t input_buffer[USART_INPUT_BUFFER_COUNT] __attribute((section(".noinit")));
+// Number of unread messages in the queue
+uint8_t input_count __attribute((section(".noinit")));
+// Index of the message currently being received
+uint8_t input_index __attribute((section(".noinit")));
+// Current receiver state
 input_state_t input_state __attribute((section(".noinit")));
-uint8_t input_read_index __attribute((section(".noinit")));
-uint8_t input_write_index __attribute((section(".noinit")));
+// Number of body bytes already received
 uint8_t input_length __attribute((section(".noinit")));
+// Holds the current CRC value of the message bytes already received
 uint8_t input_crc __attribute((section(".noinit")));
 
+// Possible states of the transmitter
 typedef enum {
+	// We are after a frame boundary, ready to send the next message
 	OUTPUT_IDLE,
+	// The message being transmitted starts with an escaped header
 	OUTPUT_IDLE_ESCAPE,
+	// The header of the message has been sent and there are still some body bytes to send
 	OUTPUT_MESSAGE,
+	// The current body byte is escaped
 	OUTPUT_MESSAGE_ESCAPE,
+	// The full message has been sent, only CRC byte is left to send
 	OUTPUT_CRC,
+	// The CRC byte is escaped
 	OUTPUT_CRC_ESCAPE,
+	// The CRC has been sent, a frame boundary has to be sent
 	OUTPUT_FRAME_END
 } output_state_t;
 
@@ -61,14 +77,14 @@ typedef enum {
 usart_message_t output_buffer[USART_OUTPUT_BUFFER_COUNT] __attribute((section(".noinit")));
 // Number of messages ready to send
 uint8_t output_count __attribute((section(".noinit")));
-// Index of the message being transmitted
+// Index of the message currently being transmitted
 uint8_t output_index __attribute((section(".noinit")));
-// Message transmission state
+// Current transmitter state
 output_state_t output_state __attribute((section(".noinit")));
+// Number of body bytes already sent
 uint8_t output_length __attribute((section(".noinit")));
+// Holds the current CRC value of the message bytes already processed
 uint8_t output_crc __attribute((section(".noinit")));
-
-#define next_buffer(index, max) ((index) >= (max) - 1 ? 0 : (index) + 1)
 
 // Received data ready interrupt handler
 ISR(USART_RX_vect) {
@@ -113,7 +129,7 @@ ISR(USART_RX_vect) {
 			data ^= USART_ESCAPE_MASK;
 			// New frame starts
 		INPUT_HEADER:
-			input_buffer[input_write_index].header = data;
+			input_buffer[input_index].header = data;
 			input_crc = _crc8_ccitt_update(0x00, data);
 			input_length = 0;
 			input_state = INPUT_MESSAGE;
@@ -151,13 +167,13 @@ ISR(USART_RX_vect) {
 			// Handle received message body byte
 		INPUT_BODY:
 			input_crc = _crc8_ccitt_update(input_crc, data);
-			if(input_length == usart_get_message_length(input_buffer[input_write_index])) {
+			if(input_length == usart_get_message_length(input_buffer[input_index])) {
 				// Message ended, this last byte was the CRC
 				input_state = INPUT_FRAME_END;
 				break;
 			}
 			// Append message
-			input_buffer[input_write_index].body[input_length++] = data;
+			input_buffer[input_index].body[input_length++] = data;
 			input_state = INPUT_MESSAGE;
 			break;
 		case INPUT_FRAME_END:
@@ -168,10 +184,10 @@ ISR(USART_RX_vect) {
 			}
 			if(input_crc == 0x00) {
 				// CRC OK, save the frame
-				uint8_t next_index = next_buffer(input_write_index, USART_INPUT_BUFFER_COUNT);
-				if(next_index != input_read_index) {
+				if(input_count < USART_INPUT_BUFFER_COUNT) {
 					// We have room for the next frame
-					input_write_index = next_index;
+					input_index = (input_index < USART_OUTPUT_BUFFER_COUNT - 1) ? input_index + 1 : 0;
+					input_count++;
 				}
 			}
 			// When we get here, we either stored or dropped the frame, but a new frame starts anyways
@@ -252,7 +268,8 @@ ISR(USART_UDRE_vect) {
 			data = output_crc ^ USART_ESCAPE_MASK;
 		OUTPUT_FOOTER:
 			UDR0 = data;
-			output_index = next_buffer(output_index, USART_OUTPUT_BUFFER_COUNT);
+			// Message is sent, free the buffer
+			output_index = (output_index < USART_OUTPUT_BUFFER_COUNT - 1) ? output_index + 1 : 0;
 			output_count--;
 			output_state = OUTPUT_FRAME_END;
 			break;
@@ -274,8 +291,8 @@ void usart_init(void) {
 	UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
 
 	input_state = INPUT_ERROR;
-	input_read_index = USART_INPUT_BUFFER_COUNT - 1;
-	input_write_index = 0;
+	input_count = 0;
+	input_index = 0;
 
 	output_state = OUTPUT_FRAME_END;
 	output_count = 0;
@@ -297,14 +314,23 @@ usart_message_t* usart_receive_input_message(uint16_t wait_ms) {
 	usart_message_t* ret = NULL;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		uint16_t start_time = timer_get_current();
-		uint8_t next_index = next_buffer(input_read_index, USART_INPUT_BUFFER_COUNT);
-		while(next_index == input_write_index && !timer_has_elapsed(start_time, wait_ms)) {
+		while(input_count == 0 && !timer_has_elapsed(start_time, wait_ms)) {
 			cpu_sleep();
-			next_index = next_buffer(input_read_index, USART_INPUT_BUFFER_COUNT);
 		}
-		if(next_index != input_write_index) {
-			input_read_index = next_index;
-			ret = &input_buffer[input_read_index];
+		if(input_count > 0) {
+			ret = &input_buffer[input_index < input_count ?
+				USART_INPUT_BUFFER_COUNT - (input_count - input_index) :
+				input_index - input_count];
+		}
+	}
+	return ret;
+}
+
+bool usart_drop_input_message(void) {
+	bool ret = false;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		if((ret = (input_count > 0))) {
+			input_count--;
 		}
 	}
 	return ret;
@@ -318,22 +344,24 @@ usart_message_t* usart_prepare_output_message(uint16_t wait_ms) {
 			cpu_sleep();
 		}
 		if(output_count < USART_OUTPUT_BUFFER_COUNT) {
-			uint8_t edit_index = output_index + output_count;
-			if(edit_index >= USART_OUTPUT_BUFFER_COUNT) {
-				edit_index -= USART_OUTPUT_BUFFER_COUNT;
-			}
-			ret = &output_buffer[edit_index];
+			ret = &output_buffer[output_count >= USART_OUTPUT_BUFFER_COUNT - output_index ?
+				output_count - (USART_OUTPUT_BUFFER_COUNT - output_index) :
+				output_index + output_count];
 		}
 	}
 	return ret;
 }
 
-void usart_send_output_message(void) {
+bool usart_send_output_message(void) {
+	bool ret = false;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		if(output_count++ == 0) {
+		if((ret = (output_count < USART_OUTPUT_BUFFER_COUNT))) {
+			if(output_count++ == 0) {
 			// Turn on transmission interrupt, so the output queue will be emptied eventually
 			usart_send_on();
+			}
 		}
 	}
+	return ret;
 }
 
