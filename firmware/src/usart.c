@@ -113,7 +113,7 @@ ISR(USART_RX_vect) {
 			data ^= USART_ESCAPE_MASK;
 			// New frame starts
 		INPUT_HEADER:
-			*((uint8_t*)&input_buffer[input_write_index]) = data;
+			input_buffer[input_write_index].header = data;
 			input_crc = _crc8_ccitt_update(0x00, data);
 			input_length = 0;
 			input_state = INPUT_MESSAGE;
@@ -151,7 +151,7 @@ ISR(USART_RX_vect) {
 			// Handle received message body byte
 		INPUT_BODY:
 			input_crc = _crc8_ccitt_update(input_crc, data);
-			if(input_length == input_buffer[input_write_index].length) {
+			if(input_length == usart_get_message_length(input_buffer[input_write_index])) {
 				// Message ended, this last byte was the CRC
 				input_state = INPUT_FRAME_END;
 				break;
@@ -191,7 +191,7 @@ ISR(USART_UDRE_vect) {
 				break;
 			}
 			// Start sending the header
-			data = *((uint8_t*)&output_buffer[output_index]);
+			data = output_buffer[output_index].header;
 			output_length = 0;
 			output_crc = _crc8_ccitt_update(0x00, data);
 			if(data == USART_FRAME_BYTE || data == USART_ESCAPE_BYTE) {
@@ -204,10 +204,10 @@ ISR(USART_UDRE_vect) {
 			goto OUTPUT_HEADER;
 		case OUTPUT_IDLE_ESCAPE:
 			// Send the escaped data
-			data = *((uint8_t*)&output_buffer[output_index]) ^ USART_ESCAPE_MASK;
+			data = output_buffer[output_index].header ^ USART_ESCAPE_MASK;
 		OUTPUT_HEADER:
 			UDR0 = data;
-			if(output_buffer[output_index].length == 0) {
+			if(usart_get_message_length(output_buffer[output_index]) == 0) {
 				// Message without body, CRC comes next
 				output_state = OUTPUT_CRC;
 			} else {
@@ -230,7 +230,7 @@ ISR(USART_UDRE_vect) {
 			data = output_buffer[output_index].body[output_length] ^ USART_ESCAPE_MASK;
 		OUTPUT_BODY:
 			UDR0 = data;
-			if(++output_length == output_buffer[output_index].length) {
+			if(++output_length == usart_get_message_length(output_buffer[output_index])) {
 				// Whole message was sent, CRC comes next
 				output_state = OUTPUT_CRC;
 			} else {

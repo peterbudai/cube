@@ -9,10 +9,13 @@
 #define USART_MESSAGE_SIZE 15
 
 typedef struct {
-	uint8_t length : 4;
-	uint8_t type : 4;
+	uint8_t header;
 	uint8_t body[USART_MESSAGE_SIZE];
 } usart_message_t;
+
+#define usart_get_message_type(message) ((message).header >> 4)
+#define usart_get_message_length(message) ((message).header & USART_MESSAGE_SIZE)
+#define usart_set_message_header(message, type, length) ((message).header = ((type) << 4) | ((length) & USART_MESSAGE_SIZE))
 
 /**
  * Initialize USART for transmit and receive.
@@ -25,4 +28,4 @@ usart_message_t* usart_receive_input_message(uint16_t wait_ms);
 usart_message_t* usart_prepare_output_message(uint16_t wait_ms);
 void usart_send_output_message(void);
 
-#endif /* USART_H */
+#endif

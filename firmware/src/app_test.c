@@ -34,14 +34,13 @@ void app_test(void) {
 		}
 
 		usart_message_t* message = usart_receive_input_message(250);
-		if(message != NULL && message->type == 1 && message->length == 1) {
+		if(message != NULL && usart_get_message_type(*message) == 0x01 && usart_get_message_length(*message) == 1) {
 			c = message->body[0];
 			font_load(f, c);
 		}
 
 		if(timer_has_elapsed(t, 1000) && (message = usart_prepare_output_message(0)) != NULL) {
-			message->type = 0x9;
-			message->length = 0x1;
+			usart_set_message_header(*message, 0x9, 1);
 			message->body[0] = cube_get_free_frames();
 			usart_send_output_message();
 			t = timer_get_current();
