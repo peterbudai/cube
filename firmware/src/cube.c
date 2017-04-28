@@ -50,9 +50,15 @@ uint8_t current_layer __attribute__((section(".noinit")));
 uint8_t current_repeat __attribute__((section(".noinit")));
 uint8_t current_frame __attribute__((section(".noinit")));
 uint8_t edited_frame __attribute__((section(".noinit")));
+bool enabled __attribute__((section(".noinit")));
 
 // Timer interrupt handler for periodic cube refresh
-ISR(TIMER0_COMPA_vect) {
+void cube_timer_refresh(void) {
+	// When cube is turned off, do not consume resources
+	if(!enabled) {
+		return;
+	}
+
 	// Display the current layer of the current frame
 	uint8_t* layer = frame_address(current_frame) + layer_address(current_layer);
 	enable_off();
@@ -67,11 +73,16 @@ ISR(TIMER0_COMPA_vect) {
 	enable_on();
 
 	// Advance to the next layer, iteration or frame
+	// Assuming that this function is called once per milliseconds, a full frame
+	// requires 8 ms to display once, but will be repeteated before the next
+	// frame comes in every 40 ms, thus we get a nice 25 Hz frame rate which
+	// suits well for displaying fluid animations.
 	current_layer++;
 	if(current_layer >= 8) {
 		current_layer = 0;
 		current_repeat++;
-		if(current_repeat >= CUBE_FRAME_REPEAT) {
+		// Each full frame is repeated 5 times to help the image stabilize visually
+		if(current_repeat >= 5) {
 			current_repeat = 0;
 			// If there are no more frames to display, the last one will be freezed
 			uint8_t next_frame = frame_next(current_frame);
@@ -89,12 +100,8 @@ void cube_init(void)
 	DDRC |= (ROWL_MASK | SHIFT_BIT | STORE_BIT);
 	DDRD |= (ROWH_MASK | ENABLE_BIT);
 
-	// Set CTC mode
-	TCCR0A = (1 << WGM01);
-	// Set interval to approx 1000 Hz
-	OCR0A = (F_CPU / 64 / (CUBE_FRAME_PER_SECOND * CUBE_FRAME_REPEAT * 8)) - 1;
-
 	// Start with an empty frame
+	enabled = false;
 	current_frame = 0;
 	edited_frame = 1;
 	clear_frame(frame_address(current_frame));
@@ -103,28 +110,20 @@ void cube_init(void)
 void cube_enable(void)
 {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		// Enable timer interrupt
-		TIMSK0 = (1 << OCIE0A);
-		// Set clock source to F_CPU/64
-		TCCR0B = (1 << CS01) | (1 << CS00);
-		// Reset timer
-		TCNT0 = 0x00;
 		// Start with a whole frame, cube will be enabled when the timer fires
 		current_layer = 0;
 		current_repeat = 0;
+		// Turn on timer event processing
+		enabled = true;
 	}
 }
 
 void cube_disable(void)
 {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		// Set clock source to OFF
-		TCCR0B = 0x00;
-		// Disable timer interrupt
-		TIMSK0 = 0x00;
-		// Clear interrupt flag if any
-		TIFR0 = (1 << OCF0A);
-		// Turn cube off
+		// Turn off timer event processing
+		enabled = false;
+		// Turn off cube outputs
 		enable_off();
 	}
 }
@@ -144,9 +143,10 @@ uint8_t cube_get_free_frames(void) {
 uint8_t* cube_advance_frame(uint16_t wait_ms) {
 	uint8_t* ret = NULL;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		uint16_t start_time = timer_get_current();
+		uint16_t start_time = timer_get_current_unsafe();
 		uint8_t next_frame = frame_next(edited_frame);
-		while(next_frame == current_frame && !timer_has_elapsed(start_time, wait_ms)) {
+		// Wait until some frame gets displayed, and becomes free to edit
+		while(next_frame == current_frame && !timer_has_elapsed_unsafe(start_time, wait_ms)) {
 			cpu_sleep();
 			next_frame = frame_next(edited_frame);
 		}

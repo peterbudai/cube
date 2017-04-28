@@ -313,8 +313,8 @@ void usart_stop(void) {
 usart_message_t* usart_receive_input_message(uint16_t wait_ms) {
 	usart_message_t* ret = NULL;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		uint16_t start_time = timer_get_current();
-		while(input_count == 0 && !timer_has_elapsed(start_time, wait_ms)) {
+		uint16_t start_time = timer_get_current_unsafe();
+		while(input_count == 0 && !timer_has_elapsed_unsafe(start_time, wait_ms)) {
 			cpu_sleep();
 		}
 		if(input_count > 0) {
@@ -339,8 +339,8 @@ bool usart_drop_input_message(void) {
 usart_message_t* usart_prepare_output_message(uint16_t wait_ms) {
 	usart_message_t* ret = NULL;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		uint16_t start_time = timer_get_current();
-		while(output_count == USART_OUTPUT_BUFFER_COUNT && !timer_has_elapsed(start_time, wait_ms)) {
+		uint16_t start_time = timer_get_current_unsafe();
+		while(output_count == USART_OUTPUT_BUFFER_COUNT && !timer_has_elapsed_unsafe(start_time, wait_ms)) {
 			cpu_sleep();
 		}
 		if(output_count < USART_OUTPUT_BUFFER_COUNT) {
@@ -357,8 +357,8 @@ bool usart_send_output_message(void) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		if((ret = (output_count < USART_OUTPUT_BUFFER_COUNT))) {
 			if(output_count++ == 0) {
-			// Turn on transmission interrupt, so the output queue will be emptied eventually
-			usart_send_on();
+				// Turn on transmission interrupt, so the output queue will be emptied eventually
+				usart_send_on();
 			}
 		}
 	}

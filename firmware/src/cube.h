@@ -1,6 +1,7 @@
 /**
  * @file cube.h
  * @copyright (C) 2017 Peter Budai
+ *
  * LED cube output driver and framebuffer module.
  */
 
@@ -19,17 +20,6 @@
  * One frame is displayed, but the others are available for pre-rendering.
  */
 #define CUBE_FRAME_BUFFER_COUNT 16
-/**
- * How many times a frame is displayed before moving on to the next one.
- * This gives time for the output image to stabilize visually.
- */
-#define CUBE_FRAME_REPEAT 5
-/**
- * How many frames are displayed per second.
- * This is the maximum value if frames are rendered fast enough.
- * This gives smooth animations for a human viewer.
- */
-#define CUBE_FRAME_PER_SECOND 25
 
 /**
  * Initializes cube output ports and internal state.
@@ -37,11 +27,19 @@
  */
 void cube_init(void);
 
-/// Turns on the cube by starting the output refresh timer.
+/// Turns on the cube by starting the output refresh timer event processing.
 void cube_enable(void);
 
-/// Turns off the cube and the output refresh timer.
+/// Turns off the cube and stops processing output refresh timer events.
 void cube_disable(void);
+
+/**
+ * Timer interrupt handler that will periodically refresh cube output
+ * to render the frames visually.
+ * This will be called by the timer once in every milliseconds, resulting
+ * in an approximately 25 Hz frame display rate.
+ */
+void cube_timer_refresh(void);
 
 /// Returns how many frames are available in the framebuffer for editing.
 uint8_t cube_get_free_frames(void);
@@ -49,7 +47,8 @@ uint8_t cube_get_free_frames(void);
 /**
  * Requests a new frame for editing in the framebuffer.
  * If there is no available frame it waits for at most the given time
- * for one to became available.
+ * for one to became available. However, system events are still handled
+ * in the meanwhile.
  *
  * @param wait_ms Maximum number of milliseconds to wait for a frame
  *     to become available.

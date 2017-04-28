@@ -21,7 +21,7 @@ int main(void)
 {
 	apps_init();
 
-	// Init peripherials and interrup handlers
+	// Init peripherials and interrupt handlers
 	led_init();
 	cube_init();
 	timer_init();
@@ -44,6 +44,7 @@ int main(void)
 
 	cube_disable();
 	usart_stop();
+	timer_stop();
 
 	// Blink LED
 	led_blink(200);

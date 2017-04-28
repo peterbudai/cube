@@ -5,29 +5,44 @@
 #include <util/atomic.h>
 
 #include "cpu.h"
+#include "cube.h"
 
-// Global variables.
+// Global variables
 uint16_t timer_value __attribute__((section(".noinit")));
 
-ISR(TIMER1_COMPA_vect) {
+ISR(TIMER0_COMPA_vect) {
 	// Increase timer and let it overflow
 	timer_value++;
+	// Call other timer-based subsystems
+	cube_timer_refresh();
 }
 
 void timer_init(void)
 {
-	// Set interval to 1000 Hz
-	OCR1A = F_CPU / 1000;
 	// Reset timer
-	TCNT1 = 0;
+	TCNT0 = 0x00;
+	// Set interval to 1000 Hz
+	OCR0A = F_CPU / 64 / TIMER_FREQ;
+	// Set CTC mode
+	TCCR0A = (1 << WGM01);
+	// Set clock source to F_CPU/64
+	TCCR0B = (1 << CS01) | (1 << CS00);
 	// Enable timer interrupt
-	TIMSK1 = (1 << OCIE1A);
-	// Set CTC mode and clock source to F_CPU
-	TCCR1A = 0;
-	TCCR1B = (1 << WGM12) | (1 << CS10);
+	TIMSK0 = (1 << OCIE0A);
 
 	// Start with zero timer
 	timer_value = 0;
+}
+
+void timer_stop(void) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		// Disable timer interrupt
+		TIMSK0 = 0;
+	}
+}
+
+uint16_t timer_get_current_unsafe(void) {
+	return timer_value;
 }
 
 uint16_t timer_get_current(void) {
@@ -38,44 +53,44 @@ uint16_t timer_get_current(void) {
 	return value;
 }
 
-static uint16_t timer_get_elapsed_inner(uint16_t since) {
+uint16_t timer_get_elapsed_unsafe(uint16_t since) {
 	return since <= timer_value ? timer_value - since : UINT16_MAX - since + timer_value;
 }
 
 uint16_t timer_get_elapsed(uint16_t since) {
 	uint16_t elapsed;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		elapsed = timer_get_elapsed_inner(since);
+		elapsed = timer_get_elapsed_unsafe(since);
 	}
 	return elapsed;
 }
 
-static bool timer_has_elapsed_inner(uint16_t since, uint16_t ms) {
-	return (ms != TIMER_INFINITE) && (timer_get_elapsed_inner(since) >= ms);
+bool timer_has_elapsed_unsafe(uint16_t since, uint16_t ms) {
+	return (ms != TIMER_INFINITE) && (timer_get_elapsed_unsafe(since) >= ms);
 }
 
 bool timer_has_elapsed(uint16_t since, uint16_t ms) {
 	bool result;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		result = timer_has_elapsed_inner(since, ms);
+		result = timer_has_elapsed_unsafe(since, ms);
 	}
 	return result;
 }
 
-static void timer_wait_elapsed_inner(uint16_t since, uint16_t ms) {
-	while(!timer_has_elapsed_inner(since, ms)) {
+static void timer_wait_elapsed_unsafe(uint16_t since, uint16_t ms) {
+	while(!timer_has_elapsed_unsafe(since, ms)) {
 		cpu_sleep();
 	}
 }
 
 void timer_wait_elapsed(uint16_t since, uint16_t ms) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		timer_wait_elapsed_inner(since, ms);
+		timer_wait_elapsed_unsafe(since, ms);
 	}
 }
 
 void timer_wait(uint16_t ms) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		timer_wait_elapsed_inner(timer_value, ms);
+		timer_wait_elapsed_unsafe(timer_value, ms);
 	}
 }
