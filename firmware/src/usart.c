@@ -364,4 +364,3 @@ bool usart_send_output_message(void) {
 	}
 	return ret;
 }
-

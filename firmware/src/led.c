@@ -69,4 +69,3 @@ void led_blink(uint16_t on_ms, uint16_t off_ms) {
 		blink_toggle();
 	}
 }
-

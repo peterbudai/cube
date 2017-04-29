@@ -1,4 +1,5 @@
 #include "draw.h"
+
 #include "cube.h"
 
 void clear_frame(uint8_t* frame) {

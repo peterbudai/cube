@@ -1,7 +1,8 @@
 /**
  * @file cpu.h
- * @copyright (C) 2017 Peter Budai
  * Microcontroller CPU handler routines.
+ *
+ * @copyright (C) 2017 Peter Budai
  */
 
 #ifndef CPU_H

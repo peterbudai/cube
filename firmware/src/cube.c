@@ -2,7 +2,6 @@
 
 #include <stdlib.h>
 #include <avr/io.h>
-#include <avr/interrupt.h>
 #include <util/atomic.h>
 
 #include "cpu.h"
@@ -157,4 +156,3 @@ uint8_t* cube_advance_frame(uint16_t wait_ms) {
 	}
 	return ret;
 }
-

@@ -1,8 +1,8 @@
 /**
  * @file cube.h
- * @copyright (C) 2017 Peter Budai
- *
  * LED cube output driver and framebuffer module.
+ *
+ * @copyright (C) 2017 Peter Budai
  */
 
 #ifndef CUBE_H
@@ -15,6 +15,7 @@
  * For a 8x8x8 monochrome cube, 8x8=64 bytes are required.
  */
 #define CUBE_FRAME_SIZE 64
+
 /**
  * How many frames are available in the framebuffer.
  * One frame is displayed, but the others are available for pre-rendering.
@@ -41,7 +42,11 @@ void cube_disable(void);
  */
 void cube_timer_refresh(void);
 
-/// Returns how many frames are available in the framebuffer for editing.
+/**
+ * Returns how many frames are available in the framebuffer for editing.
+ *
+ * @return Number of frames available for editing, excluding the currently edited one.
+ */
 uint8_t cube_get_free_frames(void);
 
 /**
@@ -53,13 +58,12 @@ uint8_t cube_get_free_frames(void);
  * @param wait_ms Maximum number of milliseconds to wait for a frame
  *     to become available.
  *     Value of 0 will make this function non-blocking.
- *     Value of TIMER_INFINITE will make the the function block indefinitely
+ *     Value of @ref TIMER_INFINITE will make the the function block indefinitely
  *     until a frame is available.
  * @return Address of the freely editable frame, which is a buffer of
- *     CUBE_FRAME_SIZE bytes.
+ *     @ref CUBE_FRAME_SIZE bytes.
  *     NULL if no free frame became available during the wait period.
  */
 uint8_t* cube_advance_frame(uint16_t wait_ms);
 
 #endif
-

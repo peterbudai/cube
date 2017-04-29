@@ -1,7 +1,7 @@
-#include <util/delay.h>
-#include <avr/eeprom.h>
-
 #include "app.h"
+
+#include <stdlib.h>
+
 #include "cube.h"
 #include "draw.h"
 #include "font.h"

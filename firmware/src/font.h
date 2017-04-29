@@ -1,8 +1,8 @@
 /**
  * @file font.h
- * @copyright (C) 2016 Peter Budai
- *
  * Simple font handling from EEPROM.
+ *
+ * @copyright (C) 2017 Peter Budai
  */
 
 #ifndef FONT_H
@@ -15,6 +15,7 @@
  * Full support of 128 ASCII characters.
  */
 #define FONT_CHAR_COUNT 128
+
 /**
  * How many bytes a single character occupies.
  * 8x8 bitmap font requires 8 bytes per character.
@@ -27,8 +28,8 @@
  * The font is returned scanline by scanline from top to bottom.
  * Within each byte (scanline), the pixels are encoded left to right from MSB to LSB.
  *
- * @param buf Buffer of at least FONT_CHAR_SIZE bytes to hold the loaded character.
- * @param chr Character to load, must fall between 0 and FONT_CHAR_COUNT - 1.
+ * @param buf Buffer of at least @ref FONT_CHAR_SIZE bytes to hold the loaded character.
+ * @param chr Character to load, must fall between 0 and @ref FONT_CHAR_COUNT - 1.
  */
 void font_load(uint8_t* buf, char chr);
 
