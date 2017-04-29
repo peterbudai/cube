@@ -46,6 +46,10 @@ static void* mcu_run(void* args __attribute__((unused))) {
 	return NULL;
 }
 
+static void handle_status_led(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
+	status_led = (value != 0);
+}
+
 static void handle_leds_enable(struct avr_irq_t* irq __attribute__((unused)), uint32_t value, void* param __attribute__((unused))) {
 	if(value == 0) {
 		leds_dim_up();
@@ -126,6 +130,7 @@ void mcu_init(int argc, char** argv) {
 		}
 	}
 
+	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('D'), 2), handle_status_led, NULL);
 	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('D'), 3), handle_leds_enable, NULL);
 	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('C'), 4), handle_leds_shift, NULL);
 	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('C'), 5), handle_leds_store, NULL);

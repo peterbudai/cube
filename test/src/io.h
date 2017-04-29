@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 extern volatile uint64_t mcu_ticks;
+extern volatile bool status_led;
 
 #define LED_COUNT 8
 

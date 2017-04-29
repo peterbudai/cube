@@ -8,6 +8,7 @@
 
 // MCU state
 volatile uint64_t mcu_ticks = 0;
+volatile bool status_led = false;
 
 // Leds
 int leds_enabled = 0;

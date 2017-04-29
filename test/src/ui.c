@@ -21,6 +21,31 @@
 float LED_DIM[DIM_MAX] = {0.8, 1, 0.8};
 float LED_OFF[DIM_MAX] = {0.6, 1, 0.6};
 
+float COLOR_OFF[4][4] = {
+	{0.9, 0.9, 0.9, 0.4},
+	{0.9, 0.9, 0.9, 0.4},
+	{0.7, 0.6, 0.6, 0.4},
+	{0.0, 0.0, 0.0, 1},
+};
+float COLOR_ORANGE[4][4] = {
+	{1.0, 0.35, 0, 0.95},
+	{1.0, 0.35, 0, 0.95},
+	{1.0, 0.35, 0, 0.95},
+	{1.0, 0.35, 0, 1},
+};
+float COLOR_RED[4][4] = {
+	{1.0, 0.1, 0.1, 0.95},
+	{1.0, 0.1, 0.1, 0.95},
+	{1.0, 0.1, 0.1, 0.95},
+	{1.0, 0.1, 0.1, 1},
+};
+float COLOR_BLACK[4][4] = {
+	{0.5, 0.5, 0.5, 1},
+	{0.3, 0.3, 0.3, 1},
+	{0.0, 0.0, 0.0, 1},
+	{0.0, 0.0, 0.0, 1},
+};
+
 #define DRAW_FPS 50
 uint64_t draw_count = 0;
 
@@ -34,26 +59,11 @@ int rotate_x = 11, rotate_y = -23;
 int drag_x = 0, drag_y = 0;
 bool drag_on = false;
 
-static void draw_led(bool state) {
-	// Red plastic
-	float mat[4] = {0, 0, 0, 0};
-	if(state) {
-		mat[0] = 1.0; mat[1] = 0.35; mat[2] = 0; mat[3] = 0.95;
-		glMaterialfv(GL_FRONT, GL_AMBIENT, mat);
-		mat[0] = 1.0; mat[1] = 0.35; mat[2] = 0; mat[3] = 0.95;
-		glMaterialfv(GL_FRONT, GL_DIFFUSE, mat);
-		mat[0] = 1.0; mat[1] = 0.35; mat[2] = 0; mat[3] = 1;
-		glMaterialfv(GL_FRONT, GL_EMISSION, mat);
-		mat[0] = 1.0; mat[1] = 0.35; mat[2] = 0; mat[3] = 0.95;
-		glMaterialfv(GL_FRONT, GL_SPECULAR, mat);
-	} else {
-		mat[0] = 0.9; mat[1] = 0.9; mat[2] = 0.9; mat[3] = 0.4;
-		glMaterialfv(GL_FRONT, GL_AMBIENT, mat);
-		mat[0] = 0.9; mat[1] = 0.9; mat[2] = 0.9; mat[3] = 0.4;
-		glMaterialfv(GL_FRONT, GL_DIFFUSE, mat);
-		mat[0] = 0.7; mat[1] = 0.6; mat[2] = 0.6; mat[3] = 0.4;
-		glMaterialfv(GL_FRONT, GL_SPECULAR, mat);
-	}
+static void draw_led(float color[][4]) {
+	glMaterialfv(GL_FRONT, GL_AMBIENT, color[0]);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, color[1]);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, color[2]);
+	glMaterialfv(GL_FRONT, GL_EMISSION, color[3]);
 	glMaterialf(GL_FRONT, GL_SHININESS, 32);
 
 	// Led's bottom is a 0.8 diameter cylinder at y=0, its tip is at 0,1,0
@@ -98,11 +108,72 @@ static void draw_leds() {
 				glPushMatrix();
 				glTranslatef(get_led_origin(DIM_X, x), get_led_origin(DIM_Y, y), get_led_origin(DIM_Z, z));
 				glScalef(LED_SCALE, LED_SCALE, LED_SCALE);
-				draw_led(led_enabled && (led_state[y][x] & (1 << z)) > 0);
+				draw_led((led_enabled && (led_state[y][x] & (1 << z)) > 0) ? COLOR_ORANGE : COLOR_OFF);
 				glPopMatrix();
 			}
 		}
 	}
+}
+
+static void draw_box() {
+	// Box is 2 wide along the x axis, 1.5 wide along the z axis and 0.75 tall along the y axis,
+	// origin is at the top of the box, at the center
+	float bottom_left_front[3] = {-1, -0.75, 0.75};
+	float bottom_right_front[3] = {1, -0.75, 0.75};
+	float bottom_left_back[3] = {-1, -0.75, -0.75};
+	float bottom_right_back[3] = {1, -0.75, -0.75};
+	float top_left_front[3] = {-1, 0, 0.75};
+	float top_right_front[3] = {1, 0, 0.75};
+	float top_left_back[3] = {-1, 0, -0.75};
+	float top_right_back[3] = {1, 0, -0.75};
+
+	// Black wood
+	glMaterialfv(GL_FRONT, GL_AMBIENT, COLOR_BLACK[0]);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, COLOR_BLACK[1]);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, COLOR_BLACK[2]);
+	glMaterialfv(GL_FRONT, GL_EMISSION, COLOR_BLACK[3]);
+	glMaterialf(GL_FRONT, GL_SHININESS, 32);
+
+	// Draw sides
+	glBegin(GL_QUADS);
+	// Front
+	glNormal3f(0, 0, 1);
+	glVertex3fv(bottom_right_front);
+	glVertex3fv(top_right_front);
+	glVertex3fv(top_left_front);
+	glVertex3fv(bottom_left_front);
+	// Left
+	glNormal3f(-1, 0, 0);
+	glVertex3fv(bottom_left_front);
+	glVertex3fv(top_left_front);
+	glVertex3fv(top_left_back);
+	glVertex3fv(bottom_left_back);
+	// Back
+	glNormal3f(0, 0, -1);
+	glVertex3fv(bottom_left_back);
+	glVertex3fv(top_left_back);
+	glVertex3fv(top_right_back);
+	glVertex3fv(bottom_right_back);
+	// Right
+	glNormal3f(1, 0, 0);
+	glVertex3fv(bottom_right_back);
+	glVertex3fv(top_right_back);
+	glVertex3fv(top_right_front);
+	glVertex3fv(bottom_right_front);
+	// Top
+	glNormal3f(0, 1, 0);
+	glVertex3fv(top_right_front);
+	glVertex3fv(top_right_back);
+	glVertex3fv(top_left_back);
+	glVertex3fv(top_left_front);
+	// Bottom
+	glNormal3f(0, -1, 0);
+	glVertex3fv(bottom_right_front);
+	glVertex3fv(bottom_left_front);
+	glVertex3fv(bottom_left_back);
+	glVertex3fv(bottom_right_back);
+	glVertex3fv(bottom_right_front);
+	glEnd();
 }
 
 static void draw_ligths() {
@@ -138,8 +209,21 @@ static void draw_callback() {
 
 	glRotatef(rotate_x, 1, 0, 0);
 	glRotatef(rotate_y, 0, 1, 0);
+
+	glPushMatrix();
+	glTranslatef(0.2, -0.5, 0);
+	glScalef(0.75, 0.75, 0.75);
+	draw_box();
+	glPopMatrix();
+
+	glPushMatrix();
 	glScalef(0.5, 0.5, 0.5);
 	draw_leds();
+	glPopMatrix();
+
+	glTranslatef(0.9, -0.5, -0.5);
+	glScalef(0.6 * LED_SCALE, 0.6 * LED_SCALE, 0.6 * LED_SCALE);
+	draw_led(status_led ? COLOR_RED : COLOR_OFF);
 
 	glutSwapBuffers();
 	draw_count++;
@@ -169,8 +253,8 @@ static void mouse_move_callback(int x, int y) {
 		int diffY = y - drag_y;
 		if(abs(diffY) > 10) {
 			rotate_x += diffY / 10;
-			if(rotate_x > 30) {
-				rotate_x = 30;
+			if(rotate_x > 60) {
+				rotate_x = 60;
 			}
 			if(rotate_x < -30) {
 				rotate_x = -30;
