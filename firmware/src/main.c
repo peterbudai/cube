@@ -27,8 +27,8 @@ int main(void)
 	timer_init();
 	usart_init();
 
-	// Blink LED
-	led_blink(200);
+	// Start blinking status led
+	led_blink(200, 2800);
 
 	// Start running background operations
 	bool enabled = true;
@@ -45,9 +45,7 @@ int main(void)
 	cube_disable();
 	usart_stop();
 	timer_stop();
-
-	// Blink LED
-	led_blink(200);
+	led_off();
 
 	if(enabled) {
 		cpu_reset();
