@@ -43,7 +43,7 @@ void set_plane(uint8_t* frame, plane_t plane, uint8_t n, const uint8_t* value) {
 	case LAYERS:
 		for(uint8_t r = 0; r < 8; ++r) {
 			for(uint8_t c = 0; c < 8; ++c) {
-				set_pixel(frame, r, c, n, (value[7 - r] & (1 << c)) != 0);
+				set_pixel(frame, r, c, n, (value[r] & (1 << c)) != 0);
 			}
 		}
 		break;

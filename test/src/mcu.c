@@ -60,7 +60,7 @@ static void handle_leds_shift(struct avr_irq_t* irq __attribute__((unused)), uin
 	if(value != 0) {
 		uint8_t row_data = (mcu->data[PORTD] & 0xF0) | (mcu->data[PORTC] & 0x0F);
 		for(int i = 0; i < 8; ++i) {
-			shift_reg[i] = (shift_reg[i] << 1) | ((row_data >> i) & 0x01);
+			shift_reg[i] = (shift_reg[i] << 1) | ((row_data >> (7 - i)) & 0x01);
 		}
 	}
 }
