@@ -11,8 +11,8 @@
 #define LED_BIT (1 << LED_BIT_INDEX)
 
 // Global variables
-uint16_t blink_last;
-uint16_t blink_period[2];
+uint16_t blink_last __attribute((section(".noinit")));
+uint16_t blink_period[2] __attribute((section(".noinit")));
 
 static void blink_off(void) {
 	blink_period[0] = blink_period[1] = TIMER_INFINITE;

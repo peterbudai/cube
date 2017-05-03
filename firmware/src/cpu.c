@@ -7,11 +7,19 @@
 #include <avr/wdt.h>
 #include <util/atomic.h>
 
+#define STACK_CANARY 0xCC
+
+// Defined by the linker, this is the byte in memory right after all data bytes
+extern uint8_t _end;
+
 void handle_reset(void) {
 	// Clear reset flag and disable watchdog, so it won't reset again in 15 ms
 	MCUSR = 0;
 	wdt_disable();
 	cli();
+
+	// Put a canary byte right after the data in RAM (the bottom of the stack)
+	_end = STACK_CANARY;
 }
 
 void cpu_reset(void) {
@@ -36,4 +44,10 @@ void cpu_sleep(void) {
 		sleep_cpu();
 	}
 	sleep_disable();
+
+	// Check if stack canary has ever been overwritten
+	if(_end != STACK_CANARY) {
+		// Stack overflow, we'd better reset
+		cpu_halt();
+	}
 }
