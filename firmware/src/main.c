@@ -1,4 +1,3 @@
-#include <setjmp.h>
 #include <stdbool.h>
 #include <avr/interrupt.h>
 #include <avr/signature.h>
@@ -9,13 +8,8 @@
 #include "cube.h"
 #include "led.h"
 #include "timer.h"
+#include "system.h"
 #include "usart.h"
-
-//bool job_exit_event;
-//jmp_buf job_exit_point;
-//	if(job_exit_event) {
-//		longjmp(job_exit_point, 1);
-//	}
 
 int main(void)
 {
@@ -31,25 +25,22 @@ int main(void)
 	led_blink(200, 2800);
 
 	// Start running background operations
-	bool enabled = true;
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	sei();
 
-	while(true) {
-		apps[1]();
-	}
+	// Start executing applications
+	bool stop_mode = system_run();
 
+	// Prepare shutting down
 	cli();
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
+	// Disable all peripherials and interrupt sources
 	cube_disable();
 	usart_stop();
 	timer_stop();
 	led_off();
 
-	if(enabled) {
-		cpu_reset();
-	} else {
-		cpu_halt();
-	}
+	// Stop the CPU
+	cpu_stop(stop_mode);
 }

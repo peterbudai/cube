@@ -1,34 +1,40 @@
 #include "cpu.h"
 
-#include <stdbool.h>
+#include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <util/atomic.h>
 
-#define STACK_CANARY 0xCC
+#include "system.h"
+
+// Stack canary constants
+#define STACK_CANARY_SIZE 4
+#define STACK_CANARY_PATTERN 0xCC
 
 // Defined by the linker, this is the byte in memory right after all data bytes
 extern uint8_t _end;
 
-void handle_reset(void) {
+void cpu_handle_reset(void) {
 	// Clear reset flag and disable watchdog, so it won't reset again in 15 ms
 	MCUSR = 0;
 	wdt_disable();
 	cli();
 
-	// Put a canary byte right after the data in RAM (the bottom of the stack)
-	_end = STACK_CANARY;
+	// Put canary bytes right after the data in RAM (the bottom of the stack)
+	for(uint8_t i = 0; i < STACK_CANARY_SIZE; ++i) {
+		*(&_end + i) = STACK_CANARY_PATTERN;
+	}
 }
 
-void cpu_reset(void) {
-	// Enable watchdog and wait until it fires
-	wdt_enable(WDTO_15MS);
-	cpu_halt();
-}
+void cpu_stop(bool watchdog) {
+	// Enable watchdog if requested
+	if(watchdog) {
+		wdt_enable(WDTO_15MS);
+	}
 
-void cpu_halt(void) {
+	// Halt the CPU
 	cli();
 	sleep_enable();
 	while(true) {
@@ -45,9 +51,17 @@ void cpu_sleep(void) {
 	}
 	sleep_disable();
 
-	// Check if stack canary has ever been overwritten
-	if(_end != STACK_CANARY) {
-		// Stack overflow, we'd better reset
-		cpu_halt();
+	// Check if any sytem events happened during the sleep
+	system_handle_events();
+}
+
+void cpu_check_stack(void) {
+	// Check if stack canary has been overwritten
+	for(uint8_t i = 0; i < STACK_CANARY_SIZE; ++i) {
+		if(*(&_end + i) != STACK_CANARY_PATTERN) {
+			// Stack overflow, we'd better reset
+			cpu_reset();
+		}
 	}
 }
+

@@ -40,7 +40,7 @@ void cube_disable(void);
  * This will be called by the timer once in every milliseconds, resulting
  * in an approximately 25 Hz frame display rate.
  */
-void cube_timer_refresh(void);
+void cube_handle_timer(void);
 
 /**
  * Returns how many frames are available in the framebuffer for editing.

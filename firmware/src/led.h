@@ -20,7 +20,7 @@ void led_init(void);
  * Timer interrupt handler that will drive timed led blinking.
  * This will be called by the timer once in every milliseconds.
  */
-void led_timer_refresh(void);
+void led_handle_timer(void);
 
 /**
  * Turn status led on permanently.

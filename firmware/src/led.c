@@ -32,7 +32,7 @@ void led_init(void) {
 	blink_off();
 }
 
-void led_timer_refresh(void) {
+void led_handle_timer(void) {
 	uint16_t period = blink_period[(LED_PORT & LED_BIT) >> LED_BIT_INDEX];
 
 	// If timer is off, return immediately to save CPU resources

@@ -52,7 +52,7 @@ uint8_t edited_frame __attribute__((section(".noinit")));
 bool enabled __attribute__((section(".noinit")));
 
 // Timer interrupt handler for periodic cube refresh
-void cube_timer_refresh(void) {
+void cube_handle_timer(void) {
 	// When cube is turned off, do not consume resources
 	if(!enabled) {
 		return;
