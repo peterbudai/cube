@@ -1,7 +1,7 @@
 FIRMWARE_DIR = "firmware"
 FIRMWARE_TARGET = "out/firmware.elf"
 
-SIMULATOR_DIR = "test"
+SIMULATOR_DIR = "simulator"
 SIMULATOR_TARGET = "out/simulator"
 
 build: $(FIRMWARE_DIR)/$(FIRMWARE_TARGET) $(SIMULATOR_DIR)/$(SIMULATOR_TARGET)
