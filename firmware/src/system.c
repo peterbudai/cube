@@ -42,6 +42,8 @@ void system_handle_events(void) {
 	uint8_t command = 0;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		command = current_command;
+		current_command = 0;
+
 		if((command & 0x80) != 0) {
 			current_app = command & 0x7F;
 		}
