@@ -1,0 +1,19 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "AVR-GDB",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/firmware/out/firmware.elf",
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": true,
+            "miDebuggerPath": "/usr/bin/avr-gdb",
+            "miDebuggerServerAddress": "localhost:28233",
+            "MIMode": "gdb"
+        }
+    ]
+}
