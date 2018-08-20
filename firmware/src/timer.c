@@ -7,7 +7,7 @@
 #include "cpu.h"
 #include "cube.h"
 #include "led.h"
-#include "system.h"
+#include "task.h"
 
 // Global variables
 uint16_t timer_value __attribute__((section(".noinit")));
@@ -18,7 +18,7 @@ ISR(TIMER0_COMPA_vect) {
 	// Call other timer-based subsystems
 	cube_handle_timer();
 	led_handle_timer();
-	system_handle_timer();
+	task_handle_timer();
 }
 
 void timer_init(void)

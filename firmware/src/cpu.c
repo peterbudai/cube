@@ -7,8 +7,6 @@
 #include <avr/wdt.h>
 #include <util/atomic.h>
 
-#include "system.h"
-
 // Stack canary constants
 #define STACK_CANARY_SIZE 4
 #define STACK_CANARY_PATTERN 0xCC
@@ -50,9 +48,6 @@ void cpu_sleep(void) {
 		sleep_cpu();
 	}
 	sleep_disable();
-
-	// Check if any sytem events happened during the sleep
-	system_handle_events();
 }
 
 void cpu_check_stack(void) {

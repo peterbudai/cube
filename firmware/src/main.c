@@ -28,9 +28,6 @@ int main(void)
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	sei();
 
-	// Start executing applications
-	bool stop_mode = system_run();
-
 	// Prepare shutting down
 	cli();
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
@@ -42,5 +39,5 @@ int main(void)
 	led_off();
 
 	// Stop the CPU
-	cpu_stop(stop_mode);
+	cpu_halt();
 }

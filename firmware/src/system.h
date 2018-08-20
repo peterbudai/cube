@@ -1,15 +1,15 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include <stdbool.h>
+#include "task.h"
 
-#include "usart.h"
+#define SYSTEM_TASK 0
+#define SYSTEM_RECV_BUFFER_SIZE 32
+#define SYSTEM_SEND_BUFFER_SIZE 64
 
-void system_handle_timer(void);
-bool system_handle_usart_input(usart_message_t* message);
-bool system_handle_usart_output(usart_message_t* message);
-void system_handle_events(void);
+extern uint8_t system_recv_buffer[];
+extern uint8_t system_send_buffer[];
 
-bool system_run(void);
+void system_run(void);
 
 #endif

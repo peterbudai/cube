@@ -11,7 +11,6 @@
 
 #include "cpu.h"
 #include "timer.h"
-#include "system.h"
 
 // Port helper macros
 #define USART_SEND_BITS ((1 << TXEN0) | (1 << UDRIE0))
@@ -185,7 +184,7 @@ ISR(USART_RX_vect) {
 			}
 			if(input_crc == 0x00) {
 				// CRC OK, process the frame
-				if(system_handle_usart_input(&input_buffer[input_count]) &&	(input_count < USART_INPUT_BUFFER_COUNT)) {
+				if(input_count < USART_INPUT_BUFFER_COUNT) {
 					// We have room for the next frame
 					input_index = (input_index < USART_OUTPUT_BUFFER_COUNT - 1) ? input_index + 1 : 0;
 					input_count++;
