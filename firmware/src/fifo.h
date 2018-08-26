@@ -16,9 +16,7 @@ typedef struct {
     /// Size of the whole buffer
     uint16_t capacity;
     // Index where the first complete message starts
-    uint16_t first;
-    // Index where the first incomplete message starts
-    uint16_t last;
+    uint16_t start;
     /// Number of bytes currently in completed messages
     uint16_t size;
 } fifo_t;

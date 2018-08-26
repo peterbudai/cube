@@ -11,7 +11,9 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": ["$gcc"]
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "Clean",
@@ -22,7 +24,8 @@
         {
             "label": "Debug",
             "type": "shell",
-            "command": "EXTRA_ARGS=\"-p\" make debug"
+            "command": "EXTRA_ARGS=\"-p\" make debug",
+            "problemMatcher": []
         }
     ]
 }

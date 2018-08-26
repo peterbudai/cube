@@ -14,7 +14,7 @@
 #include <stdint.h>
 
 /// Number of input messages that can be queued without dropping a frame.
-#define USART_INPUT_BUFFER_COUNT 24
+#define USART_INPUT_BUFFER_COUNT 8
 /// Number of output messages that can be queued without dropping a frame.
 #define USART_OUTPUT_BUFFER_COUNT 8
 /// Number of body bytes that can maximally fit in a message.

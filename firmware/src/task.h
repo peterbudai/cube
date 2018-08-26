@@ -15,14 +15,25 @@
 #define TASK_WAIT_TIMER 0x08
 
 typedef struct {
-	void* stack;
 	uint8_t status;
+	void* stack;
+	void* stack_start;
+	void* stack_end;
 	fifo_t recv_fifo;
 	fifo_t send_fifo;
 } task_t;
 
 typedef void (*task_func_t)(void);
 
+#define TASK_COUNT 2
+
+extern task_t tasks[];
+
+void tasks_init(void);
+void task_start(uint8_t id, task_func_t func);
+void task_stop(uint8_t id);
+
+void task_schedule(void);
 void task_handle_timer(void);
 
 #endif

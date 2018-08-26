@@ -20,7 +20,7 @@
  * How many frames are available in the framebuffer.
  * One frame is displayed, but the others are available for pre-rendering.
  */
-#define CUBE_FRAME_BUFFER_COUNT 16
+#define CUBE_FRAME_BUFFER_COUNT 8
 
 /**
  * Initializes cube output ports and internal state.
