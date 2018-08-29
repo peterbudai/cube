@@ -8,10 +8,8 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include <stdint.h>
-
 // The linker defines this pseudo symbol that is located after all global variables.
-extern uint8_t _end;
+extern char _end;
 
 /// Size of initial stack, that is used temporary by the setup routines
 /// right after boot or reset.

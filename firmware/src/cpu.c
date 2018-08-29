@@ -1,28 +1,10 @@
 #include "cpu.h"
 
-#include <stdint.h>
-#include <stdbool.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <util/atomic.h>
-
-// RAM layout
-//
-// Symbolic name               Description
-// -------------               -----------
-// RAMEND                      \
-// ...                         | system stack
-// RAMEND - SYSTEM_STACK_SIZE  /
-// APP_STACK_START                                       \
-// ...                                                   |
-// CPU_STACK_END + CPU_STACK_INIT_SIZE  \                | app stack
-// ...                                  | initial stack  |
-// CPU_STACK_END                        /                /
-// CPU_STACK_END - 1           \
-// ...                         | global variables
-// RAMSTART                    /
 
 void cpu_init(void) {
 	// Set up __zero_reg__: Compiler assumes that R1 must always be zero,
@@ -46,7 +28,7 @@ void cpu_reset(void) {
 void cpu_halt(void) {
 	cli();
 	sleep_enable();
-	while(true) {
+	for(;;) {
 		// Sleeping with interrupts disabled makes CPU never wake again until
 		// hardware or watchdog reset
 		sleep_cpu();
