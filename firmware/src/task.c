@@ -8,23 +8,31 @@
 task_t tasks[TASK_COUNT] __attribute__((section(".noinit")));
 uint8_t current_task __attribute__((section(".noinit")));
 
-#define STACK_CANARY ((uint16_t)0x53CA)	// Stored as LE uint16_t: 53CA, stored as RET address: CA53
+#define STACK_CANARY ((uint16_t)0x53CA)
+
+#define stack_store_addr(ptr, fn) do { \
+		*((uint8_t*)(ptr) + 0) = ((uint16_t)(fn)) >> 8; \
+		*((uint8_t*)(ptr) + 1) = ((uint16_t)(fn)) & 0xFF; \
+	} while(0)
+#define stack_store_canary(ptr) *((uint16_t*)(ptr)) = STACK_CANARY
+#define stack_check_canary(ptr) (*((uint16_t*)(ptr)) == STACK_CANARY)
 
 void tasks_init(void) {
 	for(uint8_t i = 0; i < TASK_COUNT; ++i) {
 		tasks[i].status = TASK_STOPPED;
 		tasks[i].stack = NULL;
-		*((uint16_t*)tasks[i].stack_start) = STACK_CANARY;
-		*((uint16_t*)tasks[i].stack_end) = STACK_CANARY;
+		stack_store_addr(tasks[i].stack_start, cpu_reset);
+		stack_store_canary(tasks[i].stack_end);
 	}
+	current_task = 0;
 }
 
 // Stack layout after setup:
 //
 // Address			Register
 // -------			--------
-// stack_start+1	HI(STACK_CANARY)
-// stack_start		LO(STACK_CANARY)
+// stack_start+1	LO(cpu_reset)
+// stack_start		HI(cpu_reset)
 // stack+35 		LO(PC)
 // stack+34 		HI(PC)
 // stack+33 		R31
@@ -46,16 +54,12 @@ void task_start(uint8_t id, task_func_t func) {
 		stack[i] = 0;
 	}
 	// PC
-	stack[34] = ((uint16_t)func) >> 8;
-	stack[35] = ((uint16_t)func) & 0xFF;
+	stack_store_addr(&stack[34], func);
 	tasks[id].stack = stack;
 
 	// Reset FIFOs
-	tasks[id].recv_fifo.start = 0;
-	tasks[id].recv_fifo.size = 0;
-
-	tasks[id].send_fifo.start = 0;
-	tasks[id].send_fifo.size = 0;
+	fifo_clear(&tasks[id].recv_fifo);
+	fifo_clear(&tasks[id].send_fifo);
 
 	// Enable
 	tasks[id].status = TASK_SCHEDULED;
@@ -168,7 +172,7 @@ __attribute__((noinline)) void task_switch(uint8_t new_task) {
 
 void task_check_stack(uint8_t num) {
 	// Check if stack canary has been overwritten
-	if(*((uint16_t*)tasks[num].stack_start) != STACK_CANARY || *((uint16_t*)tasks[num].stack_start) != STACK_CANARY) {
+	if(!stack_check_canary(tasks[num].stack_end)) {
 		// Stack overflow, we'd better reset
 		cpu_reset();
 	}

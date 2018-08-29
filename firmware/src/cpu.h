@@ -8,34 +8,21 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include <stdbool.h>
+/// Size of initial stack, that is used temporary by the setup routines
+/// right after boot or reset.
+#define CPU_INIT_STACK_SIZE 64
 
-/**
- * Code that runs early after reset.
- * Sets watchdog reset logic into default state.
- */
-void cpu_handle_reset(void) __attribute__((naked)) __attribute__((section(".init3")));
+/// Initializes the microcontroller.
+/// This is the first code to be executed right after powerup or reset.
+void cpu_init(void) __attribute__((naked, section(".init0")));
 
 /// Properly resets the microcontroller using the watchdog timer.
-#define cpu_reset(void) cpu_stop(true)
+void cpu_reset(void) __attribute__((noreturn));
 /// Properly halts the microcontroller.
-#define cpu_halt(void) cpu_stop(false)
+/// This is the last code to be executed while the CPU is running.
+void cpu_halt(void) __attribute__((noreturn, naked, section(".fini0")));
 
-/**
- * Either halts or resets the microcontroller.
- *
- * @param watchdog Set to true to activate the watchdog timer before halting the CPU.
- *     This will cause the CPU to be reset shortly. Otherwise it will halt completely.
- */
-void cpu_stop(bool watchdog) __attribute__((noreturn));
-
-/**
- * Sleeps the microcontroller until an interrupt occurs.
- * This will handle system events as well.
- */
+/// Sleeps the microcontroller until an interrupt occurs.
 void cpu_sleep(void);
-
-/// Checks for stack owerflow condition and reset if it occured.
-void cpu_check_stack(void);
 
 #endif

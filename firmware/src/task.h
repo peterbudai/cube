@@ -14,7 +14,7 @@
 #define TASK_WAIT_SEND 0x04
 #define TASK_WAIT_TIMER 0x08
 
-typedef struct {
+typedef struct task {
 	uint8_t status;
 	void* stack;
 	void* stack_start;

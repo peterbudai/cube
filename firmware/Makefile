@@ -8,7 +8,7 @@ TARGET = firmware
 
 CDEFS = -DF_CPU=$(FREQ) 
 CFLAGS = -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -fdata-sections -ffunction-sections -Wall -Wextra -Wstrict-prototypes -g -O$(OPT) -Wa,-adhlns=$(<:$(SRC_DIR)/%.c=$(TARGET_DIR)/%.lst)
-LDFLAGS = -Wl,-Map=$(TARGET_DIR)/$(TARGET).map,--cref,--gc-sections,--section-start=.stack=0x800740 -lm
+LDFLAGS = -Wl,-Map=$(TARGET_DIR)/$(TARGET).map,--cref,--gc-sections -lm
 
 AVRDUDE_PROGRAMMER = usbtiny
 AVRDUDE_PORT = usb:001:004    # programmer connected to serial device

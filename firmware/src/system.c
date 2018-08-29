@@ -10,7 +10,6 @@
 #include "timer.h"
 #include "usart.h"
 
-uint8_t system_stack[128] __attribute__((section(".stack")));
 uint8_t system_recv_buffer[SYSTEM_RECV_BUFFER_SIZE] __attribute__((section(".noinit")));
 uint8_t system_send_buffer[SYSTEM_SEND_BUFFER_SIZE] __attribute__((section(".noinit")));
 
@@ -18,15 +17,11 @@ void system_task_init(void) {
     task_t* task = &tasks[SYSTEM_TASK];
     task->stack_start = SYSTEM_STACK_ADDR - 1;
     task->stack_end = SYSTEM_STACK_ADDR - SYSTEM_STACK_SIZE + 1;
-    task->recv_fifo.buffer = system_recv_buffer;
-    task->recv_fifo.capacity = SYSTEM_RECV_BUFFER_SIZE;
-    task->send_fifo.buffer = system_send_buffer;
-    task->send_fifo.capacity = SYSTEM_SEND_BUFFER_SIZE;
+    fifo_init(&task->recv_fifo, system_recv_buffer, SYSTEM_RECV_BUFFER_SIZE);
+    fifo_init(&task->send_fifo, system_send_buffer, SYSTEM_SEND_BUFFER_SIZE);
 }
 
 void system_run(void) {
-    system_stack[0] = 1;
-
 	// Init peripherials and interrupt handlers
 	led_init();
 	cube_init();
@@ -40,7 +35,7 @@ void system_run(void) {
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	sei();
 
-	system_run();
+	while(true);
 
 	// Prepare shutting down
 	cli();

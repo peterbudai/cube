@@ -8,17 +8,21 @@
 #ifndef FIFO_H
 #define FIFO_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-typedef struct {
-    /// Pointer to the whole FIFO buffer
+typedef struct fifo {
+    /// Pointer to the whole buffer data area.
     uint8_t* buffer;
-    /// Size of the whole buffer
-    uint16_t capacity;
-    // Index where the first complete message starts
-    uint16_t start;
-    /// Number of bytes currently in completed messages
-    uint16_t size;
+    /// Capacity of the whole buffer.
+    size_t capacity;
+    // Index where the first unread data byte starts.
+    size_t start;
+    /// Number of bytes currently in the buffer.
+    size_t size;
 } fifo_t;
+
+void fifo_init(fifo_t* fifo, uint8_t* buffer, size_t capacity);
+void fifo_clear(fifo_t* fifo);
 
 #endif
