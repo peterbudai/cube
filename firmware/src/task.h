@@ -14,6 +14,7 @@
 #define TASK_WAIT_SEND 0x04
 #define TASK_WAIT_TIMER 0x08
 
+/// Task descriptor.
 typedef struct task {
 	uint8_t status;
 	void* stack;
@@ -25,15 +26,39 @@ typedef struct task {
 
 typedef void (*task_func_t)(void);
 
+/// Number of available task slots.
 #define TASK_COUNT 2
 
+/// The task descriptors.
 extern task_t tasks[];
 
-void tasks_init(void);
+/**
+ * Initializes the given task slot: stack boundaries and status, but not FIFOs.
+ * This must be called before using the task slot. If the task uses network,
+ * the FIFOs must be initialized as well.
+ * @param id Task slot identifier.
+ * @param stack_start Stack start address (the highest address, stack grows downwards from here)
+ * @param stack_size Available stack size for this task.
+ */
+void task_init(uint8_t id, void* stack_start, size_t stack_size);
+
+/**
+ * Schedules a function to be run on the given task slot.
+ * @param id Task slot identifier.
+ * @param func Function to run.
+ */
 void task_start(uint8_t id, task_func_t func);
+
+/**
+ * Removes a function from a task slot.
+ * @param id Task slot identifier.
+ */
 void task_stop(uint8_t id);
 
 void task_schedule(void);
 void task_handle_timer(void);
+
+/// Starts the task scheduler and passes the control to it.
+void tasks_run(void);
 
 #endif

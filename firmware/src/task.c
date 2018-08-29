@@ -10,41 +10,53 @@ uint8_t current_task __attribute__((section(".noinit")));
 
 #define STACK_CANARY ((uint16_t)0x53CA)
 
+/// Stores an return address on the stack.
 #define stack_store_addr(ptr, fn) do { \
 		*((uint8_t*)(ptr) + 0) = ((uint16_t)(fn)) >> 8; \
 		*((uint8_t*)(ptr) + 1) = ((uint16_t)(fn)) & 0xFF; \
 	} while(0)
+
+// Stack canary manipulation
 #define stack_store_canary(ptr) *((uint16_t*)(ptr)) = STACK_CANARY
 #define stack_check_canary(ptr) (*((uint16_t*)(ptr)) == STACK_CANARY)
 
-void tasks_init(void) {
-	for(uint8_t i = 0; i < TASK_COUNT; ++i) {
-		tasks[i].status = TASK_STOPPED;
-		tasks[i].stack = NULL;
-		stack_store_addr(tasks[i].stack_start, cpu_reset);
-		stack_store_canary(tasks[i].stack_end);
-	}
-	current_task = 0;
+void task_init(uint8_t id, void* stack_start, size_t stack_size) {
+	// Stack layout after init:
+	//
+	// Address						Contents
+	// -------						--------
+	// task.stack_start+1			LO(cpu_reset)
+	// task.stack_start				HI(cpu_reset)
+	// ... (stack_size-4 bytes) ...
+	// task.stack_end+1				HI(STACK_CANARY)
+	// task.stack_end				LO(STACK_CANARY)
+
+	tasks[id].status = TASK_STOPPED;
+	tasks[id].stack = NULL;
+    tasks[id].stack_start = stack_start - 1;
+	stack_store_addr(tasks[id].stack_start, cpu_reset);
+    tasks[id].stack_end = stack_start - stack_size + 1;
+	stack_store_canary(tasks[id].stack_end);
 }
 
-// Stack layout after setup:
-//
-// Address			Register
-// -------			--------
-// stack_start+1	LO(cpu_reset)
-// stack_start		HI(cpu_reset)
-// stack+35 		LO(PC)
-// stack+34 		HI(PC)
-// stack+33 		R31
-// ...
-// stack+02 		R0
-// stack+01 		SREG
-// stack			(future SP)
-// ...
-// stack_end+1		HI(STACK_CANARY)
-// stack_end		LO(STACK_CANARY)
-
 void task_start(uint8_t id, task_func_t func) {
+	// Stack layout after start:
+	//
+	// Address						Contents
+	// -------						--------
+	// task.stack_start+1			LO(cpu_reset)
+	// task.stack_start				HI(cpu_reset)
+	// task.stack+35 				LO(PC)
+	// task.stack+34 				HI(PC)
+	// task.stack+33 				R31
+	// ... (31 bytes) ...	
+	// task.stack+02 				R0
+	// task.stack+01 				SREG
+	// task.stack					(future SP)
+	// ...	
+	// task.stack_end+1				HI(STACK_CANARY)
+	// task.stack_end				LO(STACK_CANARY)
+
 	// Prepare stack
 	uint8_t* stack = tasks[id].stack_start - 36;
 	// SREG (interrupts disabled)
@@ -70,19 +82,19 @@ void task_stop(uint8_t id) {
 	tasks[id].stack = NULL;
 }
 
-// Stack layout after saving context:
-//
-// Address	Register
-// -------	--------
-// SP+35 	LO(PC)
-// SP+34 	HI(PC)
-// SP+33 	R31
-// ...
-// SP+02 	R0
-// SP+01 	SREG
-// SP+00
-
 __attribute__((noinline)) void task_switch(uint8_t new_task) {
+	// Stack layout after saving context:
+	//
+	// Address		Contents
+	// -------		--------
+	// SP+35 		LO(PC)
+	// SP+34 		HI(PC)
+	// SP+33 		R31
+	// ...	
+	// SP+02 		R0
+	// SP+01 		SREG
+	// SP+00	
+
 	// Save context
 	// PC is saved when calling this function
 	asm volatile(
@@ -170,14 +182,6 @@ __attribute__((noinline)) void task_switch(uint8_t new_task) {
 	);
 }
 
-void task_check_stack(uint8_t num) {
-	// Check if stack canary has been overwritten
-	if(!stack_check_canary(tasks[num].stack_end)) {
-		// Stack overflow, we'd better reset
-		cpu_reset();
-	}
-}
-
 void task_schedule(void) {
 	uint8_t next_task;
 	for(next_task = 0; next_task < TASK_COUNT; ++next_task) {
@@ -186,7 +190,11 @@ void task_schedule(void) {
 		}
 	}
 	if(next_task < TASK_COUNT) {
-		task_check_stack(next_task);
+		// Check if stack canary has been overwritten
+		if(!stack_check_canary(tasks[next_task].stack_end)) {
+			// Stack overflow, we'd better reset
+			cpu_reset();
+		}
 		if(next_task != current_task) {
 			task_switch(next_task);
 		}
@@ -194,5 +202,10 @@ void task_schedule(void) {
 }
 
 void task_handle_timer(void) {
+	task_schedule();
+}
+
+void tasks_run(void) {
+	current_task = 0;
 	task_schedule();
 }

@@ -14,11 +14,9 @@ uint8_t system_recv_buffer[SYSTEM_RECV_BUFFER_SIZE] __attribute__((section(".noi
 uint8_t system_send_buffer[SYSTEM_SEND_BUFFER_SIZE] __attribute__((section(".noinit")));
 
 void system_task_init(void) {
-    task_t* task = &tasks[SYSTEM_TASK];
-    task->stack_start = SYSTEM_STACK_ADDR - 1;
-    task->stack_end = SYSTEM_STACK_ADDR - SYSTEM_STACK_SIZE + 1;
-    fifo_init(&task->recv_fifo, system_recv_buffer, SYSTEM_RECV_BUFFER_SIZE);
-    fifo_init(&task->send_fifo, system_send_buffer, SYSTEM_SEND_BUFFER_SIZE);
+    task_init(SYSTEM_TASK, SYSTEM_STACK_START, SYSTEM_STACK_SIZE);
+    fifo_init(&tasks[SYSTEM_TASK].recv_fifo, system_recv_buffer, SYSTEM_RECV_BUFFER_SIZE);
+    fifo_init(&tasks[SYSTEM_TASK].send_fifo, system_send_buffer, SYSTEM_SEND_BUFFER_SIZE);
 }
 
 void system_run(void) {

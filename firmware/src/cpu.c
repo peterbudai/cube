@@ -8,8 +8,21 @@
 #include <avr/wdt.h>
 #include <util/atomic.h>
 
-// The linker defines this pseudo symbol that is located after all global variables.
-extern uint8_t _end;
+// RAM layout
+//
+// Symbolic name               Description
+// -------------               -----------
+// RAMEND                      \
+// ...                         | system stack
+// RAMEND - SYSTEM_STACK_SIZE  /
+// APP_STACK_START                                       \
+// ...                                                   |
+// CPU_STACK_END + CPU_STACK_INIT_SIZE  \                | app stack
+// ...                                  | initial stack  |
+// CPU_STACK_END                        /                /
+// CPU_STACK_END - 1           \
+// ...                         | global variables
+// RAMSTART                    /
 
 void cpu_init(void) {
 	// Set up __zero_reg__: Compiler assumes that R1 must always be zero,
@@ -18,7 +31,7 @@ void cpu_init(void) {
 	// Set up SREG: interrupts disabled
 	SREG = 0;
 	// Set up initial stack just above the data area
-	SP = (uint16_t)(&_end + CPU_INIT_STACK_SIZE);
+	SP = (uint16_t)(CPU_STACK_END + CPU_STACK_INIT_SIZE);
 	// Clear reset flag and disable watchdog, so it won't reset again in 15 ms
 	MCUSR = 0;
 	wdt_disable();

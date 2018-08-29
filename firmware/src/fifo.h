@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/// Circular-buffer FIFO structure.
 typedef struct fifo {
     /// Pointer to the whole buffer data area.
     uint8_t* buffer;
@@ -22,7 +23,10 @@ typedef struct fifo {
     size_t size;
 } fifo_t;
 
+/// Initialize an empty FIFO using the underlying buffer.
 void fifo_init(fifo_t* fifo, uint8_t* buffer, size_t capacity);
+
+/// Clears the FIFO.
 void fifo_clear(fifo_t* fifo);
 
 #endif

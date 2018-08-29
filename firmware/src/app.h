@@ -10,10 +10,11 @@
 
 #include "task.h"
 #include "system.h"
+#include "cpu.h"
 
 #define APP_TASK 1
-#define APP_STACK_SIZE 128
-#define APP_STACK_ADDR (SYSTEM_STACK_ADDR - SYSTEM_STACK_SIZE)
+#define APP_STACK_START (SYSTEM_STACK_START - SYSTEM_STACK_SIZE)
+#define APP_STACK_SIZE (APP_STACK_START - CPU_STACK_END + 1)
 #define APP_RECV_BUFFER_SIZE 512
 #define APP_SEND_BUFFER_SIZE 64
 

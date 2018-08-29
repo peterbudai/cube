@@ -8,9 +8,15 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include <stdint.h>
+
+// The linker defines this pseudo symbol that is located after all global variables.
+extern uint8_t _end;
+
 /// Size of initial stack, that is used temporary by the setup routines
 /// right after boot or reset.
-#define CPU_INIT_STACK_SIZE 64
+#define CPU_STACK_INIT_SIZE 64
+#define CPU_STACK_END ((void*)&_end)
 
 /// Initializes the microcontroller.
 /// This is the first code to be executed right after powerup or reset.
