@@ -1,10 +1,10 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include <avr/io.h>
+#include "task.h"
 
 #define SYSTEM_TASK 0
-#define SYSTEM_STACK_START ((void*)RAMEND)
+#define SYSTEM_STACK_START (IDLE_STACK_START - IDLE_STACK_SIZE)
 #define SYSTEM_STACK_SIZE 96
 #define SYSTEM_RECV_BUFFER_SIZE 32
 #define SYSTEM_SEND_BUFFER_SIZE 64

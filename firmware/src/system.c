@@ -12,14 +12,28 @@
 
 uint8_t system_recv_buffer[SYSTEM_RECV_BUFFER_SIZE] __attribute__((section(".noinit")));
 uint8_t system_send_buffer[SYSTEM_SEND_BUFFER_SIZE] __attribute__((section(".noinit")));
+fifo_t system_recv_fifo __attribute__((section(".noinit")));
+fifo_t system_send_fifo __attribute__((section(".noinit")));
 
 void system_task_init(void) {
+	// Init USART buffers
+    fifo_init(&system_recv_fifo, system_recv_buffer, SYSTEM_RECV_BUFFER_SIZE);
+    fifo_init(&system_send_fifo, system_send_buffer, SYSTEM_SEND_BUFFER_SIZE);
+
+	// Init task descriptor
     task_init(SYSTEM_TASK, SYSTEM_STACK_START, SYSTEM_STACK_SIZE);
-    fifo_init(&tasks[SYSTEM_TASK].recv_fifo, system_recv_buffer, SYSTEM_RECV_BUFFER_SIZE);
-    fifo_init(&tasks[SYSTEM_TASK].send_fifo, system_send_buffer, SYSTEM_SEND_BUFFER_SIZE);
+	tasks[SYSTEM_TASK].recv_fifo = &system_recv_fifo;
+	tasks[SYSTEM_TASK].send_fifo = &system_send_fifo;
 }
 
 void system_run(void) {
+	for(;;) {
+		tasks[SYSTEM_TASK].status |= TASK_WAIT_CUBE;
+		tasks[IDLE_TASK].status &= ~TASK_WAIT_CUBE;
+		task_schedule();
+	}
+
+	#if 0
 	// Init peripherials and interrupt handlers
 	led_init();
 	cube_init();
@@ -44,4 +58,5 @@ void system_run(void) {
 	usart_stop();
 	timer_stop();
 	led_off();
+	#endif
 }

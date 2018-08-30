@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <avr/io.h>
 
-#include "cpu.h"
-
 task_t tasks[TASK_COUNT] __attribute__((section(".noinit")));
 uint8_t current_task __attribute__((section(".noinit")));
 
@@ -37,10 +35,12 @@ void task_init(uint8_t id, void* stack_start, size_t stack_size) {
 	stack_store_addr(tasks[id].stack_start, cpu_reset);
     tasks[id].stack_end = stack_start - stack_size + 1;
 	stack_store_canary(tasks[id].stack_end);
+	tasks[id].recv_fifo = NULL;
+	tasks[id].send_fifo = NULL;
 }
 
-void task_start(uint8_t id, task_func_t func) {
-	// Stack layout after start:
+void task_add(uint8_t id, task_func_t func) {
+	// Stack layout after adding:
 	//
 	// Address						Contents
 	// -------						--------
@@ -70,19 +70,32 @@ void task_start(uint8_t id, task_func_t func) {
 	tasks[id].stack = stack;
 
 	// Reset FIFOs
-	fifo_clear(&tasks[id].recv_fifo);
-	fifo_clear(&tasks[id].send_fifo);
+	fifo_clear(tasks[id].recv_fifo);
+	fifo_clear(tasks[id].send_fifo);
 
 	// Enable
 	tasks[id].status = TASK_SCHEDULED;
 }
 
-void task_stop(uint8_t id) {
+void task_remove(uint8_t id) {
 	tasks[id].status = TASK_STOPPED;
 	tasks[id].stack = NULL;
 }
 
-__attribute__((noinline)) void task_switch(uint8_t new_task) {
+void tasks_start(void) {
+	// Initialize idle task
+	// It is initialized only this far (task_add() is not called) on purpose:
+	//  - Idle task doesn't need FIFO.
+	//  - This setup will result in idle task to take the place of the
+	//    caller function (namely main()), which is our goal here.
+	task_init(IDLE_TASK, IDLE_STACK_START, IDLE_STACK_SIZE);
+	tasks[IDLE_TASK].status = TASK_SCHEDULED;
+	current_task = IDLE_TASK;
+
+	task_schedule();
+}
+
+__attribute__((noinline, naked)) void task_switch(uint8_t new_task) {
 	// Stack layout after saving context:
 	//
 	// Address		Contents
@@ -178,6 +191,7 @@ __attribute__((noinline)) void task_switch(uint8_t new_task) {
 		"pop r29 \n\t"
 		"pop r30 \n\t"
 		"pop r31 \n\t"
+		"ret \n\t"
 		"" :: "i" _SFR_IO_ADDR(SREG)
 	);
 }
@@ -185,27 +199,20 @@ __attribute__((noinline)) void task_switch(uint8_t new_task) {
 void task_schedule(void) {
 	uint8_t next_task;
 	for(next_task = 0; next_task < TASK_COUNT; ++next_task) {
-		if((tasks[next_task].status & TASK_SCHEDULED != 0) && (tasks[next_task].status & TASK_WAITING == 0)) {
+		if((tasks[next_task].status & TASK_SCHEDULED) && !(tasks[next_task].status & TASK_WAITING)) {
 			break;
 		}
 	}
-	if(next_task < TASK_COUNT) {
-		// Check if stack canary has been overwritten
-		if(!stack_check_canary(tasks[next_task].stack_end)) {
-			// Stack overflow, we'd better reset
-			cpu_reset();
-		}
-		if(next_task != current_task) {
-			task_switch(next_task);
-		}
+	
+	if(next_task >= TASK_COUNT || !stack_check_canary(tasks[next_task].stack_end)) {
+		// Error condition: no runnable task or stack overflow
+		cpu_reset();
+	}
+	if(next_task != current_task) {
+		task_switch(next_task);
 	}
 }
 
 void task_handle_timer(void) {
-	task_schedule();
-}
-
-void tasks_run(void) {
-	current_task = 0;
 	task_schedule();
 }

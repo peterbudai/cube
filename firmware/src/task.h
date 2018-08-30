@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "cpu.h"
 #include "fifo.h"
 
 /// Task status bits
@@ -20,14 +21,19 @@ typedef struct task {
 	void* stack;
 	void* stack_start;
 	void* stack_end;
-	fifo_t recv_fifo;
-	fifo_t send_fifo;
+	fifo_t* recv_fifo;
+	fifo_t* send_fifo;
 } task_t;
 
 typedef void (*task_func_t)(void);
 
 /// Number of available task slots.
-#define TASK_COUNT 2
+#define TASK_COUNT 3
+
+/// Identifier of the (always present) idle task
+#define IDLE_TASK (TASK_COUNT - 1)
+#define IDLE_STACK_START CPU_STACK_START
+#define IDLE_STACK_SIZE 64
 
 /// The task descriptors.
 extern task_t tasks[];
@@ -47,18 +53,20 @@ void task_init(uint8_t id, void* stack_start, size_t stack_size);
  * @param id Task slot identifier.
  * @param func Function to run.
  */
-void task_start(uint8_t id, task_func_t func);
+void task_add(uint8_t id, task_func_t func);
 
 /**
  * Removes a function from a task slot.
  * @param id Task slot identifier.
  */
-void task_stop(uint8_t id);
+void task_remove(uint8_t id);
+
+/// Starts the task scheduler and returns.
+/// This function have to be called from main(), which will become
+/// the idle task.
+void tasks_start(void);
 
 void task_schedule(void);
 void task_handle_timer(void);
-
-/// Starts the task scheduler and passes the control to it.
-void tasks_run(void);
 
 #endif

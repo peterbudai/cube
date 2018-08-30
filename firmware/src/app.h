@@ -8,9 +8,9 @@
 #ifndef APP_H
 #define APP_H
 
-#include "task.h"
-#include "system.h"
 #include "cpu.h"
+#include "system.h"
+#include "task.h"
 
 #define APP_TASK 1
 #define APP_STACK_START (SYSTEM_STACK_START - SYSTEM_STACK_SIZE)
