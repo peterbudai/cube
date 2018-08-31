@@ -23,6 +23,7 @@ typedef struct task {
 	void* stack_end;
 	fifo_t* recv_fifo;
 	fifo_t* send_fifo;
+	uint16_t wait_until;
 } task_t;
 
 typedef void (*task_func_t)(void);

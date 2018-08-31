@@ -43,17 +43,17 @@ typedef enum {
 } input_state_t;
 
 // Input message queue
-usart_message_t input_buffer[USART_INPUT_BUFFER_COUNT] __attribute((section(".noinit")));
+usart_message_t input_buffer[USART_INPUT_BUFFER_COUNT];
 // Number of unread messages in the queue
-uint8_t input_count __attribute((section(".noinit")));
+uint8_t input_count;
 // Index of the message currently being received
-uint8_t input_index __attribute((section(".noinit")));
+uint8_t input_index;
 // Current receiver state
-input_state_t input_state __attribute((section(".noinit")));
+input_state_t input_state;
 // Number of body bytes already received
-uint8_t input_length __attribute((section(".noinit")));
+uint8_t input_length;
 // Holds the current CRC value of the message bytes already received
-uint8_t input_crc __attribute((section(".noinit")));
+uint8_t input_crc;
 
 // Possible states of the transmitter
 typedef enum {
@@ -74,17 +74,17 @@ typedef enum {
 } output_state_t;
 
 // Output message queue
-usart_message_t output_buffer[USART_OUTPUT_BUFFER_COUNT] __attribute((section(".noinit")));
+usart_message_t output_buffer[USART_OUTPUT_BUFFER_COUNT];
 // Number of messages ready to send
-uint8_t output_count __attribute((section(".noinit")));
+uint8_t output_count;
 // Index of the message currently being transmitted
-uint8_t output_index __attribute((section(".noinit")));
+uint8_t output_index;
 // Current transmitter state
-output_state_t output_state __attribute((section(".noinit")));
+output_state_t output_state;
 // Number of body bytes already sent
-uint8_t output_length __attribute((section(".noinit")));
+uint8_t output_length;
 // Holds the current CRC value of the message bytes already processed
-uint8_t output_crc __attribute((section(".noinit")));
+uint8_t output_crc;
 
 // Received data ready interrupt handler
 ISR(USART_RX_vect) {

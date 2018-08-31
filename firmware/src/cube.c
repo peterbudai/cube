@@ -44,12 +44,12 @@
 #define frame_next(f) ((f) >= CUBE_FRAME_BUFFER_COUNT - 1 ? 0 : (f) + 1)
 
 // Global variables
-uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT] __attribute__((section(".noinit")));
-uint8_t current_layer __attribute__((section(".noinit")));
-uint8_t current_repeat __attribute__((section(".noinit")));
-uint8_t current_frame __attribute__((section(".noinit")));
-uint8_t edited_frame __attribute__((section(".noinit")));
-bool enabled __attribute__((section(".noinit")));
+uint8_t frame_buffer[CUBE_FRAME_SIZE * CUBE_FRAME_BUFFER_COUNT];
+uint8_t current_layer;
+uint8_t current_repeat;
+uint8_t current_frame;
+uint8_t edited_frame;
+bool enabled;
 
 // Timer interrupt handler for periodic cube refresh
 void cube_handle_timer(void) {

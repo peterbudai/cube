@@ -10,7 +10,7 @@
 #include "task.h"
 
 // Global variables
-uint16_t timer_value __attribute__((section(".noinit")));
+uint16_t timer_value;
 
 ISR(TIMER0_COMPA_vect) {
 	// Increase timer and let it overflow

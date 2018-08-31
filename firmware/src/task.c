@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <avr/io.h>
 
-task_t tasks[TASK_COUNT] __attribute__((section(".noinit")));
-uint8_t current_task __attribute__((section(".noinit")));
+task_t tasks[TASK_COUNT];
+uint8_t current_task;
 
 #define STACK_CANARY ((uint16_t)0x53CA)
 

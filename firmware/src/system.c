@@ -10,10 +10,10 @@
 #include "timer.h"
 #include "usart.h"
 
-uint8_t system_recv_buffer[SYSTEM_RECV_BUFFER_SIZE] __attribute__((section(".noinit")));
-uint8_t system_send_buffer[SYSTEM_SEND_BUFFER_SIZE] __attribute__((section(".noinit")));
-fifo_t system_recv_fifo __attribute__((section(".noinit")));
-fifo_t system_send_fifo __attribute__((section(".noinit")));
+uint8_t system_recv_buffer[SYSTEM_RECV_BUFFER_SIZE];
+uint8_t system_send_buffer[SYSTEM_SEND_BUFFER_SIZE];
+fifo_t system_recv_fifo;
+fifo_t system_send_fifo;
 
 void system_task_init(void) {
 	// Init USART buffers

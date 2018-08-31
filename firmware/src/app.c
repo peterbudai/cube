@@ -1,12 +1,12 @@
 #include "app.h"
 #include "fifo.h"
 
-uint8_t app_recv_buffer[APP_RECV_BUFFER_SIZE] __attribute__((section(".noinit")));
-uint8_t app_send_buffer[APP_SEND_BUFFER_SIZE] __attribute__((section(".noinit")));
-fifo_t app_recv_fifo __attribute__((section(".noinit")));
-fifo_t app_send_fifo __attribute__((section(".noinit")));
+uint8_t app_recv_buffer[APP_RECV_BUFFER_SIZE];
+uint8_t app_send_buffer[APP_SEND_BUFFER_SIZE];
+fifo_t app_recv_fifo;
+fifo_t app_send_fifo;
 
-task_func_t apps[APP_COUNT] __attribute__((section(".noinit")));
+task_func_t apps[APP_COUNT];
 
 void app_tasks_init(void) {
 	// Init USART buffers
