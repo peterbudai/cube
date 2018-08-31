@@ -99,16 +99,6 @@ bool timer_has_elapsed_unsafe(uint16_t since, uint16_t wait_ms);
 /// @}
 
 /**
- * Waits until a given amount of time has elapsed since a given point.
- * It does not return to the caller until the wait period ends. However,
- * system events are still handled in the meanwhile.
- *
- * @param since A previous timer value obtained from timer_get_current().
- * @param wait_ms How many milliseconds to wait for.
- */
-void timer_wait_elapsed(uint16_t since, uint16_t wait_ms);
-
-/**
  * Waits until a given amount of time has elapsed.
  * It does not return to the caller until the wait period ends. However,
  * system events are still handled in the meanwhile.

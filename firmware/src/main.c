@@ -28,12 +28,11 @@ int main(void)
 
 	// Pass control to system task
 	task_add(SYSTEM_TASK, system_run);
+	task_add(APP_TASK, apps[0]);
 	tasks_start();
 
 	// Idle task will continue here
 	for(;;) {
-		tasks[IDLE_TASK].status |= TASK_WAIT_CUBE;
-		tasks[SYSTEM_TASK].status &= ~TASK_WAIT_CUBE;
-		task_schedule();
+		cpu_sleep();
 	}
 }

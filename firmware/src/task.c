@@ -18,6 +18,10 @@ uint8_t current_task;
 #define stack_store_canary(ptr) *((uint16_t*)(ptr)) = STACK_CANARY
 #define stack_check_canary(ptr) (*((uint16_t*)(ptr)) == STACK_CANARY)
 
+task_t* task_current_unsafe(void) {
+	return &tasks[current_task];
+}
+
 void task_init(uint8_t id, void* stack_start, size_t stack_size) {
 	// Stack layout after init:
 	//
@@ -211,8 +215,4 @@ void task_schedule(void) {
 	if(next_task != current_task) {
 		task_switch(next_task);
 	}
-}
-
-void task_handle_timer(void) {
-	task_schedule();
 }

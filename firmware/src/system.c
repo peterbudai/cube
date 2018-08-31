@@ -27,17 +27,16 @@ void system_task_init(void) {
 }
 
 void system_run(void) {
+	cube_init();
+	timer_init();
+
 	for(;;) {
-		tasks[SYSTEM_TASK].status |= TASK_WAIT_CUBE;
-		tasks[IDLE_TASK].status &= ~TASK_WAIT_CUBE;
-		task_schedule();
+		timer_wait(15);
 	}
 
 	#if 0
 	// Init peripherials and interrupt handlers
 	led_init();
-	cube_init();
-	timer_init();
 	usart_init();
 
 	// Start blinking status led

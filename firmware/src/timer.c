@@ -93,20 +93,13 @@ bool timer_has_elapsed(uint16_t since, uint16_t ms) {
 	return result;
 }
 
-static void timer_wait_elapsed_unsafe(uint16_t since, uint16_t ms) {
-	while(!timer_has_elapsed_unsafe(since, ms)) {
-		cpu_sleep();
-	}
-}
-
-void timer_wait_elapsed(uint16_t since, uint16_t ms) {
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		timer_wait_elapsed_unsafe(since, ms);
-	}
-}
-
 void timer_wait(uint16_t ms) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		timer_wait_elapsed_unsafe(timer_value, ms);
+		if(ms > 0) {
+			task_t* task = task_current_unsafe();
+			task->status |= TASK_WAIT_TIMER;
+			task->wait_until = timer_get_current_unsafe() + ms;
+		}
+		task_schedule();
 	}
 }
