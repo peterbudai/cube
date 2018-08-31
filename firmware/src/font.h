@@ -5,8 +5,8 @@
  * @copyright (C) 2017 Peter Budai
  */
 
-#ifndef FONT_H
-#define FONT_H
+#ifndef _FONT_H_
+#define _FONT_H_
 
 #include <stdint.h>
 

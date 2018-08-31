@@ -1,5 +1,5 @@
-#ifndef SYSTEM_H
-#define SYSTEM_H
+#ifndef _SYSTEM_H_
+#define _SYSTEM_H_
 
 #include "task.h"
 

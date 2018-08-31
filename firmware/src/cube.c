@@ -6,6 +6,7 @@
 
 #include "cpu.h"
 #include "draw.h"
+#include "task.h"
 #include "timer.h"
 
 // Port numbers and bits.
@@ -51,11 +52,10 @@ uint8_t current_frame;
 uint8_t edited_frame;
 bool enabled;
 
-// Timer interrupt handler for periodic cube refresh
-void cube_handle_timer(void) {
+bool cube_refresh(void) {
 	// When cube is turned off, do not consume resources
 	if(!enabled) {
-		return;
+		return false;
 	}
 
 	// Display the current layer of the current frame
@@ -76,20 +76,37 @@ void cube_handle_timer(void) {
 	// requires 8 ms to display once, but will be repeteated before the next
 	// frame comes in every 40 ms, thus we get a nice 25 Hz frame rate which
 	// suits well for displaying fluid animations.
+
+	// Going through all layers
 	current_layer++;
-	if(current_layer >= 8) {
-		current_layer = 0;
-		current_repeat++;
-		// Each full frame is repeated 5 times to help the image stabilize visually
-		if(current_repeat >= 5) {
-			current_repeat = 0;
-			// If there are no more frames to display, the last one will be freezed
-			uint8_t next_frame = frame_next(current_frame);
-			if(next_frame != edited_frame) {
-				current_frame = next_frame;
-			}
+	if(current_layer < 8) {
+		return false;
+	}
+	current_layer = 0;
+
+	// Each full frame is repeated 5 times to help the image stabilize visually
+	current_repeat++;
+	if(current_repeat < 5) {
+		return false;
+	}
+	current_repeat = 0;
+	
+	// If there are no more frames to display, the last one will be freezed
+	uint8_t next_frame = frame_next(current_frame);
+	if(next_frame == edited_frame) {
+		return false;
+	}
+	current_frame = next_frame;
+
+	// Handle tasks waiting for cube
+	bool wake = false;
+	for(uint8_t i = 0; i < TASK_COUNT; ++i) {
+		if(tasks[i].status & TASK_WAIT_CUBE) {
+			tasks[i].status &= ~TASK_WAIT_CUBE;
+			wake = true;
 		}
 	}
+	return wake;
 }
 
 void cube_init(void)

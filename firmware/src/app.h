@@ -5,8 +5,8 @@
  * @copyright (C) 2017 Peter Budai
  */
 
-#ifndef APP_H
-#define APP_H
+#ifndef _APP_H_
+#define _APP_H_
 
 #include "cpu.h"
 #include "system.h"

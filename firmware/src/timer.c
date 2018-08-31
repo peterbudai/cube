@@ -6,19 +6,31 @@
 
 #include "cpu.h"
 #include "cube.h"
-#include "led.h"
 #include "task.h"
 
-// Global variables
+/// Continuously incrementing value at each timer tick.
 uint16_t timer_value;
 
+/// Timer interrupt handler, called once per millisecond.
 ISR(TIMER0_COMPA_vect) {
 	// Increase timer and let it overflow
-	timer_value++;
-	// Call other timer-based subsystems
-	cube_handle_timer();
-	led_handle_timer();
-	task_handle_timer();
+	++timer_value;
+
+	// Drive cube refresh
+	bool wake = cube_refresh();
+
+	// Handle tasks waiting for timer
+	for(uint8_t i = 0; i < TASK_COUNT; ++i) {
+		if((tasks[i].status & TASK_WAIT_TIMER) && tasks[i].wait_until == timer_value) {
+			// Remove wait flag if timeout reached
+			tasks[i].status &= ~TASK_WAIT_TIMER;
+			wake = true;
+		}
+	}
+
+	if(wake) {
+		task_schedule();
+	}
 }
 
 void timer_init(void)

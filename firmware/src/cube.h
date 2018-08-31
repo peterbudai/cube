@@ -5,9 +5,10 @@
  * @copyright (C) 2017 Peter Budai
  */
 
-#ifndef CUBE_H
-#define CUBE_H
+#ifndef _CUBE_H_
+#define _CUBE_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /**
@@ -40,7 +41,7 @@ void cube_disable(void);
  * This will be called by the timer once in every milliseconds, resulting
  * in an approximately 25 Hz frame display rate.
  */
-void cube_handle_timer(void);
+bool cube_refresh(void);
 
 /**
  * Returns how many frames are available in the framebuffer for editing.

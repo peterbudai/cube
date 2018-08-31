@@ -5,8 +5,8 @@
  * @copyright (C) 2017 Peter Budai
  */
 
-#ifndef CPU_H
-#define CPU_H
+#ifndef _CPU_H_
+#define _CPU_H_
 
 #include <avr/io.h>
 

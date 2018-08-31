@@ -5,8 +5,8 @@
  * @copyright (C) 2017 Peter Budai
  */
 
-#ifndef DRAW_H
-#define DRAW_H
+#ifndef _DRAW_H_
+#define _DRAW_H_
 
 #include <stdbool.h>
 #include <stdint.h>

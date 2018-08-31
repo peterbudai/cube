@@ -1,5 +1,5 @@
-#ifndef MCU_H
-#define MCU_H
+#ifndef _MCU_H_
+#define _MCU_H_
 
 #include <stdint.h>
 

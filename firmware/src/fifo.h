@@ -5,8 +5,8 @@
  * @copyright (C) 2018 Peter Budai
  */
 
-#ifndef FIFO_H
-#define FIFO_H
+#ifndef _FIFO_H_
+#define _FIFO_H_
 
 #include <stddef.h>
 #include <stdint.h>
