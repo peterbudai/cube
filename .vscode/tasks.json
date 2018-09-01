@@ -4,7 +4,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Make",
+            "label": "Build",
             "type": "shell",
             "command": "make",
             "group": {
@@ -22,7 +22,13 @@
             "problemMatcher": []
         },
         {
-            "label": "Start",
+            "label": "Run",
+            "type": "shell",
+            "command": "make run",
+            "problemMatcher": []
+        },
+        {
+            "label": "Debug",
             "type": "shell",
             "command": "EXTRA_ARGS=\"-p\" make debug",
             "problemMatcher": []

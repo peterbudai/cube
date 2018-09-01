@@ -98,11 +98,11 @@ bool cube_refresh(void) {
 	}
 	current_frame = next_frame;
 
-	// Handle tasks waiting for cube
+	// Successful frame switch: wake up tasks waiting for cube
 	bool wake = false;
 	for(uint8_t i = 0; i < TASK_COUNT; ++i) {
 		if(tasks[i].status & TASK_WAIT_CUBE) {
-			tasks[i].status &= ~TASK_WAIT_CUBE;
+			tasks[i].status &= ~TASK_WAITING;
 			wake = true;
 		}
 	}
@@ -159,13 +159,26 @@ uint8_t cube_get_free_frames(void) {
 uint8_t* cube_advance_frame(uint16_t wait_ms) {
 	uint8_t* ret = NULL;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		uint16_t start_time = timer_get_current_unsafe();
 		uint8_t next_frame = frame_next(edited_frame);
-		// Wait until some frame gets displayed, and becomes free to edit
-		while(next_frame == current_frame && !timer_has_elapsed_unsafe(start_time, wait_ms)) {
-			cpu_sleep();
-			next_frame = frame_next(edited_frame);
+
+		// If there's no free frame and we're allowed to then we wait for some
+		// frames to be displayed and become free for editing
+		if(next_frame == current_frame && wait_ms > 0) {
+			// Set up task wait status
+			task_t* task = task_current_unsafe();
+			task->status |= TASK_WAIT_CUBE;
+			if(wait_ms != TIMER_INFINITE) {
+				// Set up a timoeut as well
+				task->status |= TASK_WAIT_TIMER;
+				task->wait_until = timer_get_current_unsafe() + wait_ms;
+			}
+
+			// Yield execution -> this will return only when either a free frame is
+			// available or the timeout was reached
+			task_schedule();
 		}
+
+		// If there is an available frame, return its address
 		if(next_frame != current_frame) {
 			edited_frame = next_frame;
 			ret = frame_address(edited_frame);

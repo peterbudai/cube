@@ -27,16 +27,16 @@ void system_task_init(void) {
 }
 
 void system_run(void) {
+	// Init peripherials and interrupt handlers
+	led_init();
 	cube_init();
 	timer_init();
 
 	for(;;) {
-		timer_wait(15);
+		timer_wait(100);
 	}
 
 	#if 0
-	// Init peripherials and interrupt handlers
-	led_init();
 	usart_init();
 
 	// Start blinking status led

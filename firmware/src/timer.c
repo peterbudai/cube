@@ -19,11 +19,11 @@ ISR(TIMER0_COMPA_vect) {
 	// Drive cube refresh
 	bool wake = cube_refresh();
 
-	// Handle tasks waiting for timer
+	// Handle tasks that are waiting for timer
 	for(uint8_t i = 0; i < TASK_COUNT; ++i) {
 		if((tasks[i].status & TASK_WAIT_TIMER) && tasks[i].wait_until == timer_value) {
-			// Remove wait flag if timeout reached
-			tasks[i].status &= ~TASK_WAIT_TIMER;
+			// Remove any wait flags if timeout reached
+			tasks[i].status &= ~TASK_WAITING;
 			wake = true;
 		}
 	}
@@ -94,12 +94,15 @@ bool timer_has_elapsed(uint16_t since, uint16_t ms) {
 }
 
 void timer_wait(uint16_t ms) {
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		if(ms > 0) {
+	if(ms > 0) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			// Set up task wait status
 			task_t* task = task_current_unsafe();
 			task->status |= TASK_WAIT_TIMER;
 			task->wait_until = timer_get_current_unsafe() + ms;
+
+			// Yield execution -> this will return only when the timeout was reached
+			task_schedule();
 		}
-		task_schedule();
 	}
 }

@@ -16,6 +16,6 @@ void app_off(void) {
 		} else {
 			led_on();
 		}
-		timer_wait(25);
+		timer_wait(250);
 	}
 }

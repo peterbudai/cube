@@ -17,7 +17,7 @@ void app_test(void) {
 	font_load(f, c);
 	cube_enable();
 
-	uint16_t t = timer_get_current();
+	// uint16_t t = timer_get_current();
 	while(true) {
 		uint8_t* frame = cube_advance_frame(TIMER_INFINITE);
 		clear_frame(frame);
@@ -32,7 +32,7 @@ void app_test(void) {
 				font_load(f, c);
 			}
 		}
-
+		#if 0
 		usart_message_t* message = usart_receive_input_message(125);
 		if(message != NULL && usart_get_message_type(*message) == 0x01 && usart_get_message_length(*message) == 1) {
 			c = message->body[0];
@@ -46,5 +46,6 @@ void app_test(void) {
 			usart_send_output_message();
 			t = timer_get_current();
 		}
+		#endif
 	}
 }
