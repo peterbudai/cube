@@ -18,10 +18,6 @@ uint8_t current_task;
 #define stack_store_canary(ptr) *((uint16_t*)(ptr)) = STACK_CANARY
 #define stack_check_canary(ptr) (*((uint16_t*)(ptr)) == STACK_CANARY)
 
-task_t* task_current_unsafe(void) {
-	return &tasks[current_task];
-}
-
 void task_init(uint8_t id, void* stack_start, size_t stack_size) {
 	// Stack layout after init:
 	//
@@ -96,10 +92,10 @@ void tasks_start(void) {
 	tasks[IDLE_TASK].status = TASK_SCHEDULED;
 	current_task = IDLE_TASK;
 
-	task_schedule();
+	task_schedule_unsafe();
 }
 
-__attribute__((noinline, naked)) void task_switch(uint8_t new_task) {
+__attribute__((noinline, naked)) static void task_switch(uint8_t new_task) {
 	// Stack layout after saving context:
 	//
 	// Address		Contents
@@ -200,7 +196,11 @@ __attribute__((noinline, naked)) void task_switch(uint8_t new_task) {
 	);
 }
 
-void task_schedule(void) {
+task_t* task_current_unsafe(void) {
+	return &tasks[current_task];
+}
+
+void task_schedule_unsafe(void) {
 	uint8_t next_task;
 	for(next_task = 0; next_task < TASK_COUNT; ++next_task) {
 		if((tasks[next_task].status & TASK_SCHEDULED) && !(tasks[next_task].status & TASK_WAITING)) {

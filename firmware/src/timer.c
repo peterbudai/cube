@@ -29,7 +29,7 @@ ISR(TIMER0_COMPA_vect) {
 	}
 
 	if(wake) {
-		task_schedule();
+		task_schedule_unsafe();
 	}
 }
 
@@ -102,7 +102,7 @@ void timer_wait(uint16_t ms) {
 			task->wait_until = timer_get_current_unsafe() + ms;
 
 			// Yield execution -> this will return only when the timeout was reached
-			task_schedule();
+			task_schedule_unsafe();
 		}
 	}
 }

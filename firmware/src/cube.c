@@ -175,7 +175,7 @@ uint8_t* cube_advance_frame(uint16_t wait_ms) {
 
 			// Yield execution -> this will return only when either a free frame is
 			// available or the timeout was reached
-			task_schedule();
+			task_schedule_unsafe();
 		}
 
 		// If there is an available frame, return its address

@@ -39,8 +39,6 @@ typedef void (*task_func_t)(void);
 /// The task descriptors.
 extern task_t tasks[];
 
-task_t* task_current_unsafe(void);
-
 /**
  * Initializes the given task slot: stack boundaries and status, but not FIFOs.
  * This must be called before using the task slot. If the task uses network,
@@ -69,6 +67,8 @@ void task_remove(uint8_t id);
 /// the idle task.
 void tasks_start(void);
 
-void task_schedule(void);
+task_t* task_current_unsafe(void);
+
+void task_schedule_unsafe(void);
 
 #endif
