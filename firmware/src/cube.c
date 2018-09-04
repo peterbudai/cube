@@ -168,7 +168,7 @@ uint8_t* cube_advance_frame(uint16_t wait_ms) {
 			task_t* task = task_current_unsafe();
 			task->status |= TASK_WAIT_CUBE;
 			if(wait_ms != TIMER_INFINITE) {
-				// Set up a timoeut as well
+				// Set up a timeout as well
 				task->status |= TASK_WAIT_TIMER;
 				task->wait_until = timer_get_current_unsafe() + wait_ms;
 			}

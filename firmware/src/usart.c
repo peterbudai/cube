@@ -10,6 +10,8 @@
 #include <util/setbaud.h>
 
 #include "cpu.h"
+#include "fifo.h"
+#include "task.h"
 #include "timer.h"
 
 // Port helper macros
@@ -25,6 +27,13 @@
 #define USART_FRAME_BYTE 0x7E
 #define USART_ESCAPE_BYTE 0x7D
 #define USART_ESCAPE_MASK 0x20
+
+#define USART_ADDRESS_BITS 1
+#define USART_LENGTH_BITS (8 - USART_ADDRESS_BITS)
+#define USART_LENGTH_MAX ((1 << USART_LENGTH_BITS) - 1)
+#define usart_get_message_address(header) ((header) >> USART_LENGTH_BITS)
+#define usart_get_message_length(header) ((header) & USART_LENGTH_MAX)
+#define usart_get_message_header(address, length) (((address) << USART_LENGTH_BITS) | ((length) & USART_LENGTH_MAX))
 
 // Possible states of the receiver
 typedef enum {
@@ -42,15 +51,11 @@ typedef enum {
 	INPUT_FRAME_END
 } input_state_t;
 
-// Input message queue
-usart_message_t input_buffer[USART_INPUT_BUFFER_COUNT];
-// Number of unread messages in the queue
-uint8_t input_count;
-// Index of the message currently being received
-uint8_t input_index;
 // Current receiver state
 input_state_t input_state;
-// Number of body bytes already received
+// Destination task for the currently received bytes
+uint8_t input_task;
+// Number of body bytes still left to be received
 uint8_t input_length;
 // Holds the current CRC value of the message bytes already received
 uint8_t input_crc;
@@ -73,21 +78,18 @@ typedef enum {
 	OUTPUT_FRAME_END
 } output_state_t;
 
-// Output message queue
-usart_message_t output_buffer[USART_OUTPUT_BUFFER_COUNT];
-// Number of messages ready to send
-uint8_t output_count;
-// Index of the message currently being transmitted
-uint8_t output_index;
 // Current transmitter state
 output_state_t output_state;
-// Number of body bytes already sent
+// Task buffer for the currently sent bytes
+uint8_t output_task;
+// Number of body bytes still left to be sent
 uint8_t output_length;
 // Holds the current CRC value of the message bytes already processed
 uint8_t output_crc;
 
 // Received data ready interrupt handler
 ISR(USART_RX_vect) {
+	bool wake = false;
 	bool error = (UCSR0A & ((1 << FE0) | (1 << DOR0) | (1 << UPE0))) != 0;
 	uint8_t data = UDR0;
 
@@ -129,9 +131,19 @@ ISR(USART_RX_vect) {
 			data ^= USART_ESCAPE_MASK;
 			// New frame starts
 		INPUT_HEADER:
-			input_buffer[input_index].header = data;
+			input_task = usart_get_message_address(data);
+			if(tasks[input_task].recv_fifo == NULL) {
+				// If the receiver task does not accept data, drop the frame
+				input_state = INPUT_ERROR;
+				break;
+			}
+			input_length = usart_get_message_length(data);
+			if(!fifo_begin_push(tasks[input_task].recv_fifo, input_length)) {
+				// If the receiver buffer is full, drop the frame
+				input_state = INPUT_ERROR;
+				break;
+			}
 			input_crc = _crc8_ccitt_update(0x00, data);
-			input_length = 0;
 			input_state = INPUT_MESSAGE;
 			break;
 		case INPUT_MESSAGE:
@@ -167,13 +179,14 @@ ISR(USART_RX_vect) {
 			// Handle received message body byte
 		INPUT_BODY:
 			input_crc = _crc8_ccitt_update(input_crc, data);
-			if(input_length == usart_get_message_length(input_buffer[input_index])) {
+			if(input_length == 0) {
 				// Message ended, this last byte was the CRC
 				input_state = INPUT_FRAME_END;
 				break;
 			}
 			// Append message
-			input_buffer[input_index].body[input_length++] = data;
+			fifo_push(tasks[input_task].recv_fifo, data);
+			input_length--;
 			input_state = INPUT_MESSAGE;
 			break;
 		case INPUT_FRAME_END:
@@ -184,32 +197,47 @@ ISR(USART_RX_vect) {
 			}
 			if(input_crc == 0x00) {
 				// CRC OK, process the frame
-				if(input_count < USART_INPUT_BUFFER_COUNT) {
-					// We have room for the next frame
-					input_index = (input_index < USART_OUTPUT_BUFFER_COUNT - 1) ? input_index + 1 : 0;
-					input_count++;
+				fifo_commit_push(tasks[input_task].recv_fifo);
+				// Wake up task if it is waiting for receive
+				if(tasks[output_task].status & TASK_WAIT_RECV) {
+					tasks[output_task].status &= ~TASK_WAITING;
+					wake = true;
 				}
 			}
 			// When we get here, we either stored or dropped the frame, but a new frame starts anyways
 			input_state = INPUT_IDLE;
 			break;
 	}
+
+	if(wake) {
+		task_schedule_unsafe();
+	}
 }
 
 // Ready to send data interrupt handler
 ISR(USART_UDRE_vect) {
+	bool wake = false;
 	uint8_t data;
 	switch(output_state) {
 		case OUTPUT_IDLE:
-			if(output_count == 0) {
+			// Look for a task that has data to send
+			for(output_task = 0; output_task < TASK_COUNT; ++output_task) {
+				if(tasks[output_task].send_fifo != NULL && tasks[output_task].send_fifo->size > 0) {
+					break;
+				}
+			}
+			if(output_task >= TASK_COUNT) {
 				// We have nothing to send, turn off transmission
 				usart_send_off();
 				break;
 			}
+
 			// Start sending the header
-			data = output_buffer[output_index].header;
-			output_length = 0;
+			output_length = tasks[output_task].send_fifo->size & USART_LENGTH_MAX;
+			fifo_begin_pop(tasks[output_task].send_fifo, output_length);
+			data = usart_get_message_header(output_task, output_length);
 			output_crc = _crc8_ccitt_update(0x00, data);
+
 			if(data == USART_FRAME_BYTE || data == USART_ESCAPE_BYTE) {
 				// Header should be escaped, send escape byte first
 				UDR0 = USART_ESCAPE_BYTE;
@@ -220,10 +248,10 @@ ISR(USART_UDRE_vect) {
 			goto OUTPUT_HEADER;
 		case OUTPUT_IDLE_ESCAPE:
 			// Send the escaped data
-			data = output_buffer[output_index].header ^ USART_ESCAPE_MASK;
+			data = usart_get_message_header(output_task, output_length) ^ USART_ESCAPE_MASK;
 		OUTPUT_HEADER:
 			UDR0 = data;
-			if(usart_get_message_length(output_buffer[output_index]) == 0) {
+			if(output_length == 0) {
 				// Message without body, CRC comes next
 				output_state = OUTPUT_CRC;
 			} else {
@@ -232,7 +260,7 @@ ISR(USART_UDRE_vect) {
 			break;
 		case OUTPUT_MESSAGE:
 			// Send next message body byte
-			data = output_buffer[output_index].body[output_length];
+			data = fifo_peek(tasks[output_task].send_fifo);
 			output_crc = _crc8_ccitt_update(output_crc, data);
 			if(data == USART_FRAME_BYTE || data == USART_ESCAPE_BYTE) {
 				// Body byte should be escaped, send espace byte first
@@ -240,13 +268,14 @@ ISR(USART_UDRE_vect) {
 				output_state = OUTPUT_MESSAGE_ESCAPE;
 				break;
 			}
+			fifo_pop(tasks[output_task].send_fifo);
 			goto OUTPUT_BODY;
 		case OUTPUT_MESSAGE_ESCAPE:
 			// Send escaped data byte
-			data = output_buffer[output_index].body[output_length] ^ USART_ESCAPE_MASK;
+			data = fifo_pop(tasks[output_task].send_fifo) ^ USART_ESCAPE_MASK;
 		OUTPUT_BODY:
 			UDR0 = data;
-			if(++output_length == usart_get_message_length(output_buffer[output_index])) {
+			if(--output_length == 0) {
 				// Whole message was sent, CRC comes next
 				output_state = OUTPUT_CRC;
 			} else {
@@ -269,8 +298,12 @@ ISR(USART_UDRE_vect) {
 		OUTPUT_FOOTER:
 			UDR0 = data;
 			// Message is sent, free the buffer
-			output_index = (output_index < USART_OUTPUT_BUFFER_COUNT - 1) ? output_index + 1 : 0;
-			output_count--;
+			fifo_commit_pop(tasks[output_task].send_fifo);
+			// Wake up task if it is waiting to send
+			if(tasks[output_task].status & TASK_WAIT_SEND) {
+				tasks[output_task].status &= ~TASK_WAITING;
+				wake = true;
+			}
 			output_state = OUTPUT_FRAME_END;
 			break;
 		case OUTPUT_FRAME_END:
@@ -278,6 +311,11 @@ ISR(USART_UDRE_vect) {
 			UDR0 = USART_FRAME_BYTE;
 			output_state = OUTPUT_IDLE;
 			break;
+	}
+
+	// Handle possible task switch
+	if(wake) {
+		task_schedule_unsafe();
 	}
 }
 
@@ -290,13 +328,14 @@ void usart_init(void) {
 	// Set frame format to 8N1
 	UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
 
+	// Init state machines
 	input_state = INPUT_ERROR;
-	input_count = 0;
-	input_index = 0;
+	input_task = TASK_COUNT;
+	input_length = 0;
 
 	output_state = OUTPUT_FRAME_END;
-	output_count = 0;
-	output_index = 0;
+	output_task = TASK_COUNT;
+	output_length = 0;
 
 	// Enable receive via interrupts
 	// Transmit will be enabled as soon as the first message is sent
@@ -310,57 +349,56 @@ void usart_stop(void) {
 	}
 }
 
-usart_message_t* usart_receive_input_message(uint16_t wait_ms) {
-	usart_message_t* ret = NULL;
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		uint16_t start_time = timer_get_current_unsafe();
-		while(input_count == 0 && !timer_has_elapsed_unsafe(start_time, wait_ms)) {
-			cpu_sleep();
-		}
-		if(input_count > 0) {
-			ret = &input_buffer[input_index < input_count ?
-				USART_INPUT_BUFFER_COUNT - (input_count - input_index) :
-				input_index - input_count];
-		}
-	}
-	return ret;
-}
-
-bool usart_drop_input_message(void) {
+bool usart_receive_bytes(uint8_t* dest, size_t count, uint16_t wait_ms) {
 	bool ret = false;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		if((ret = (input_count > 0))) {
-			input_count--;
-		}
-	}
-	return ret;
-}
-
-usart_message_t* usart_prepare_output_message(uint16_t wait_ms) {
-	usart_message_t* ret = NULL;
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		uint16_t start_time = timer_get_current_unsafe();
-		while(output_count == USART_OUTPUT_BUFFER_COUNT && !timer_has_elapsed_unsafe(start_time, wait_ms)) {
-			cpu_sleep();
-		}
-		if(output_count < USART_OUTPUT_BUFFER_COUNT) {
-			ret = &output_buffer[output_count >= USART_OUTPUT_BUFFER_COUNT - output_index ?
-				output_count - (USART_OUTPUT_BUFFER_COUNT - output_index) :
-				output_index + output_count];
-		}
-	}
-	return ret;
-}
-
-bool usart_send_output_message(void) {
-	bool ret = false;
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		if((ret = (output_count < USART_OUTPUT_BUFFER_COUNT))) {
-			if(output_count++ == 0) {
-				// Turn on transmission interrupt, so the output queue will be emptied eventually
-				usart_send_on();
+		task_t* task = task_current_unsafe();
+		uint16_t start = timer_get_current_unsafe();
+		// If there's not enough data in the buffer and we're allowed to then we wait
+		// for some more bytes to arrive
+		while(fifo_size(task->recv_fifo) < count && !timer_has_elapsed_unsafe(start, wait_ms)) {
+			// Set up task wait status
+			task->status |= TASK_WAIT_RECV;
+			if(wait_ms != TIMER_INFINITE) {
+				// Set up a timeout as well
+				task->status |= TASK_WAIT_TIMER;
+				task->wait_until = start + wait_ms;
 			}
+
+			// Yield execution -> this will return only when either some more bytes
+			// were received or the timeout was reached
+			task_schedule_unsafe();
 		}
+
+		// If enough bytes are available, copy to output buffer
+		ret = fifo_pop_bytes(task->recv_fifo, dest, count);
+	}
+	return ret;
+}
+
+bool usart_send_bytes(const uint8_t* src, size_t count, uint16_t wait_ms) {
+	bool ret = false;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		task_t* task = task_current_unsafe();
+		uint16_t start = timer_get_current_unsafe();
+		// If there's not enough free space in the buffer and we're allowed to then
+		// we wait for some bytes to leave from the buffer
+		while(fifo_available(task->send_fifo) < count && !timer_has_elapsed_unsafe(start, wait_ms)) {
+			// Set up task wait status
+			task->status |= TASK_WAIT_SEND;
+			if(wait_ms != TIMER_INFINITE) {
+				// Set up a timeout as well
+				task->status |= TASK_WAIT_TIMER;
+				task->wait_until = start + wait_ms;
+			}
+
+			// Yield execution -> this will return only when either some more bytes
+			// were sent or the timeout was reached
+			task_schedule_unsafe();
+		}
+
+		// If enough space is available, copy from input buffer
+		ret = fifo_push_bytes(task->send_fifo, src, count);
 	}
 	return ret;
 }
