@@ -31,20 +31,21 @@ void system_run(void) {
 	led_init();
 	cube_init();
 	timer_init();
+	usart_init();
 
+	set_sleep_mode(SLEEP_MODE_IDLE);
+	sei();
+	
 	for(;;) {
 		timer_wait(100);
 	}
 
 	#if 0
-	usart_init();
 
 	// Start blinking status led
 	led_blink(200, 2800);
 
 	// Start running background operations
-	set_sleep_mode(SLEEP_MODE_IDLE);
-	sei();
 
 	while(true);
 
