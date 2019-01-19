@@ -8,6 +8,8 @@
 #ifndef _DRAW_H_
 #define _DRAW_H_
 
+#ifndef NO_CUBE
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -49,4 +51,6 @@ void set_pixel(uint8_t* frame, uint8_t row, uint8_t column, uint8_t layer, bool 
  */
 void set_plane(uint8_t* frame, plane_t plane, uint8_t n, const uint8_t* value);
 
-#endif
+#endif // NO_CUBE
+
+#endif // _DRAW_H_

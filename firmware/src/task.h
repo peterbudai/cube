@@ -2,6 +2,7 @@
 #define _TASK_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "cpu.h"
 #include "fifo.h"
@@ -21,8 +22,10 @@ typedef struct task {
 	void* stack;
 	void* stack_start;
 	void* stack_end;
+#ifndef NO_USART
 	fifo_t* recv_fifo;
 	fifo_t* send_fifo;
+#endif
 	uint16_t wait_until;
 } task_t;
 

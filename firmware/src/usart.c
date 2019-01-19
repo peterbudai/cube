@@ -1,5 +1,7 @@
 #include "usart.h"
 
+#ifndef NO_USART
+
 #define BAUD 38400
 
 #include <stdlib.h>
@@ -402,3 +404,5 @@ bool usart_send_bytes(const uint8_t* src, size_t count, uint16_t wait_ms) {
 	}
 	return ret;
 }
+
+#endif // NO_USART

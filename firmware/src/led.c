@@ -1,5 +1,7 @@
 #include "led.h"
 
+#ifndef NO_LED
+
 #include <avr/io.h>
 
 // Port numbers and bits
@@ -22,3 +24,5 @@ void led_on(void) {
 void led_off(void) {
 	LED_PORT &= ~LED_BIT;
 }
+
+#endif // NO_LED

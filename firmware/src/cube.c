@@ -1,5 +1,7 @@
 #include "cube.h"
 
+#ifndef NO_CUBE
+
 #include <stdlib.h>
 #include <avr/io.h>
 #include <util/atomic.h>
@@ -90,7 +92,7 @@ bool cube_refresh(void) {
 		return false;
 	}
 	current_repeat = 0;
-	
+
 	// If there are no more frames to display, the last one will be freezed
 	uint8_t next_frame = frame_next(current_frame);
 	if(next_frame == edited_frame) {
@@ -186,3 +188,5 @@ uint8_t* cube_advance_frame(uint16_t wait_ms) {
 	}
 	return ret;
 }
+
+#endif // NO_CUBE

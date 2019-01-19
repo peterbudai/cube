@@ -1,5 +1,7 @@
 #include "font.h"
 
+#ifndef NO_CUBE
+
 #include <avr/eeprom.h>
 
 /*
@@ -154,3 +156,5 @@ uint8_t font_data[FONT_CHAR_COUNT][FONT_CHAR_SIZE] __attribute__((section(".eepr
 void font_load(uint8_t* buf, char chr) {
     eeprom_read_block(buf, font_data[(uint8_t)chr], FONT_CHAR_SIZE);
 }
+
+#endif // NO_CUBE

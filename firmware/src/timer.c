@@ -16,8 +16,12 @@ ISR(TIMER0_COMPA_vect) {
 	// Increase timer and let it overflow
 	++timer_value;
 
+#ifndef NO_CUBE
 	// Drive cube refresh
 	bool wake = cube_refresh();
+#else
+	bool wake = false;
+#endif
 
 	// Handle tasks that are waiting for timer
 	for(uint8_t i = 0; i < TASK_COUNT; ++i) {

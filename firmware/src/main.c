@@ -28,7 +28,7 @@ int main(void)
 
 	// Pass control to system task
 	task_add(SYSTEM_TASK, system_run);
-	task_add(APP_TASK, apps[1]);
+	// task_add(APP_TASK, apps[1]);
 	tasks_start();
 
 	// Idle task will continue here

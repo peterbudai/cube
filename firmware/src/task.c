@@ -35,8 +35,10 @@ void task_init(uint8_t id, void* stack_start, size_t stack_size) {
 	stack_store_addr(tasks[id].stack_start, cpu_reset);
     tasks[id].stack_end = stack_start - stack_size + 1;
 	stack_store_canary(tasks[id].stack_end);
+#ifndef NO_USART
 	tasks[id].recv_fifo = NULL;
 	tasks[id].send_fifo = NULL;
+#endif
 }
 
 void task_add(uint8_t id, task_func_t func) {
@@ -49,11 +51,11 @@ void task_add(uint8_t id, task_func_t func) {
 	// task.stack+35 				LO(PC)
 	// task.stack+34 				HI(PC)
 	// task.stack+33 				R31
-	// ... (31 bytes) ...	
+	// ... (31 bytes) ...
 	// task.stack+02 				R0
 	// task.stack+01 				SREG
 	// task.stack					(future SP)
-	// ...	
+	// ...
 	// task.stack_end+1				HI(STACK_CANARY)
 	// task.stack_end				LO(STACK_CANARY)
 
@@ -69,9 +71,11 @@ void task_add(uint8_t id, task_func_t func) {
 	stack_store_addr(&stack[34], func);
 	tasks[id].stack = stack;
 
+#ifndef NO_USART
 	// Reset FIFOs
 	fifo_clear(tasks[id].recv_fifo);
 	fifo_clear(tasks[id].send_fifo);
+#endif
 
 	// Enable
 	tasks[id].status = TASK_SCHEDULED;
@@ -103,10 +107,10 @@ __attribute__((noinline, naked)) static void task_switch(uint8_t new_task) {
 	// SP+35 		LO(PC)
 	// SP+34 		HI(PC)
 	// SP+33 		R31
-	// ...	
+	// ...
 	// SP+02 		R0
 	// SP+01 		SREG
-	// SP+00	
+	// SP+00
 
 	// Save context
 	// PC is saved when calling this function
@@ -207,7 +211,7 @@ void task_schedule_unsafe(void) {
 			break;
 		}
 	}
-	
+
 	if(next_task >= TASK_COUNT || !stack_check_canary(tasks[next_task].stack_end)) {
 		// Error condition: no runnable task or stack overflow
 		cpu_reset();

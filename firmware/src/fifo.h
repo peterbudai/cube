@@ -8,6 +8,8 @@
 #ifndef _FIFO_H_
 #define _FIFO_H_
 
+#ifndef NO_USART
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -50,4 +52,6 @@ void fifo_commit_pop(fifo_t* fifo);
 
 bool fifo_pop_bytes(fifo_t* fifo, uint8_t* dest, size_t count);
 
-#endif
+#endif // NO_USART
+
+#endif // _FIFO_H_

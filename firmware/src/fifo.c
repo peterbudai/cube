@@ -1,5 +1,7 @@
 #include "fifo.h"
 
+#ifndef NO_USART
+
 void fifo_init(fifo_t* fifo, uint8_t* buffer, size_t capacity) {
     fifo->buffer = buffer;
     fifo->capacity = capacity;
@@ -88,3 +90,4 @@ bool fifo_pop_bytes(fifo_t* fifo, uint8_t* dest, size_t count) {
     return true;
 }
 
+#endif // NO_USART

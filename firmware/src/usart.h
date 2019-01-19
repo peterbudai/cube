@@ -10,6 +10,8 @@
 #ifndef _USART_H_
 #define _USART_H_
 
+#ifndef NO_USART
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -51,4 +53,6 @@ bool usart_receive_bytes(uint8_t* dest, size_t count, uint16_t wait_ms);
  */
 bool usart_send_bytes(const uint8_t* src, size_t count, uint16_t wait_ms);
 
-#endif
+#endif // NO_USART
+
+#endif // _USART_H_

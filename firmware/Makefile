@@ -6,7 +6,7 @@ SRC_DIR = src
 TARGET_DIR = out
 TARGET = firmware
 
-CDEFS = -DF_CPU=$(FREQ) 
+CDEFS += -DF_CPU=$(FREQ) $(patsubst %,-DNO_%,$(DISABLE))
 CFLAGS = -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -fdata-sections -ffunction-sections -Wall -Wextra -Wstrict-prototypes -g -O$(OPT) -Wa,-adhlns=$(<:$(SRC_DIR)/%.c=$(TARGET_DIR)/%.lst)
 LDFLAGS = -Wl,-Map=$(TARGET_DIR)/$(TARGET).map,--cref,--gc-sections -lm
 

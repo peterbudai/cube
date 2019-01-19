@@ -8,6 +8,8 @@
 #ifndef _CUBE_H_
 #define _CUBE_H_
 
+#ifndef NO_CUBE
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -67,4 +69,6 @@ uint8_t cube_get_free_frames(void);
  */
 uint8_t* cube_advance_frame(uint16_t wait_ms);
 
-#endif
+#endif // NO_CUBE
+
+#endif // _CUBE_H_

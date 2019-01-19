@@ -8,6 +8,8 @@
 #ifndef _FONT_H_
 #define _FONT_H_
 
+#ifndef NO_CUBE
+
 #include <stdint.h>
 
 /**
@@ -33,4 +35,6 @@
  */
 void font_load(uint8_t* buf, char chr);
 
-#endif
+#endif // NO_CUBE
+
+#endif // _FONT_H_

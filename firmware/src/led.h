@@ -8,6 +8,8 @@
 #ifndef _LED_H_
 #define _LED_H_
 
+#ifndef NO_LED
+
 #include <stdint.h>
 
 /**
@@ -30,4 +32,6 @@ void led_on(void);
  */
 void led_off(void);
 
-#endif
+#endif // NO_LED
+
+#endif // _LED_H

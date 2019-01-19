@@ -1,5 +1,7 @@
 #include "draw.h"
 
+#ifndef NO_CUBE
+
 #include "cube.h"
 
 void clear_frame(uint8_t* frame) {
@@ -49,3 +51,5 @@ void set_plane(uint8_t* frame, plane_t plane, uint8_t n, const uint8_t* value) {
 		break;
 	}
 }
+
+#endif // NO_CUBE
