@@ -11,10 +11,16 @@
 #define TASK_STOPPED 0x00
 #define TASK_SCHEDULED 0x80
 #define TASK_WAITING 0x0F
+#ifndef NO_CUBE
 #define TASK_WAIT_CUBE 0x01
+#endif
+#ifndef NO_USART
 #define TASK_WAIT_RECV 0x02
 #define TASK_WAIT_SEND 0x04
+#endif
+#ifndef NO_TIMER
 #define TASK_WAIT_TIMER 0x08
+#endif
 
 /// Task descriptor.
 typedef struct task {
@@ -26,7 +32,9 @@ typedef struct task {
 	fifo_t* recv_fifo;
 	fifo_t* send_fifo;
 #endif
+#ifndef NO_TIMER
 	uint16_t wait_until;
+#endif
 } task_t;
 
 typedef void (*task_func_t)(void);
@@ -64,6 +72,10 @@ void task_add(uint8_t id, task_func_t func);
  * @param id Task slot identifier.
  */
 void task_remove(uint8_t id);
+
+/// Calls the scheduler and yields execution to another, higher priority
+/// task, if it is available to run.
+void task_yield(void);
 
 /// Starts the task scheduler and returns.
 /// This function have to be called from main(), which will become

@@ -32,7 +32,14 @@ int main(void)
 	tasks_start();
 
 	// Idle task will continue here
-	for(;;) {
+	for(uint8_t i=0;;++i) {
+#ifndef NO_TIMER
 		cpu_sleep();
+#else
+		if(i % 2 == 0) {
+			tasks[SYSTEM_TASK].status = TASK_SCHEDULED;
+		}
+		task_yield();
+#endif
 	}
 }

@@ -40,7 +40,9 @@ void system_run(void) {
 #ifndef NO_CUBE
 	cube_init();
 #endif
+#ifndef NO_TIMER
 	timer_init();
+#endif
 #ifndef NO_USART
 	usart_init();
 #endif
@@ -49,8 +51,22 @@ void system_run(void) {
 	sei();
 
 	// Start running background operations
-	for(;;) {
+	for(uint8_t i = 0;;++i) {
+#ifndef NO_TIMER
 		timer_wait(100);
+#else
+		if(i % 2 == 0) {
+			tasks[SYSTEM_TASK].status = TASK_SCHEDULED | TASK_WAITING;
+#ifndef NO_LED
+			led_on();
+		} else {
+			led_off();
+		}
+#else
+		}
+		task_yield();
+#endif // NO_LED
+#endif // NO_TIMER
 	}
 
 	// Prepare shutting down
@@ -64,7 +80,9 @@ void system_run(void) {
 #ifndef NO_USART
 	usart_stop();
 #endif
+#ifndef NO_TIMER
 	timer_stop();
+#endif
 #ifndef NO_LED
 	led_off();
 #endif

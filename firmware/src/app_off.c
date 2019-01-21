@@ -20,6 +20,10 @@ void app_off(void) {
 			led_on();
 		}
 #endif
+#ifndef NO_TIMER
 		timer_wait(250);
+#else
+		cpu_sleep();
+#endif
 	}
 }

@@ -1,6 +1,7 @@
 #include "app.h"
 
-#include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "cube.h"
 #include "draw.h"

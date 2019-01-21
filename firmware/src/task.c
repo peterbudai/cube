@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <avr/io.h>
+#include <util/atomic.h>
 
 task_t tasks[TASK_COUNT];
 uint8_t current_task;
@@ -86,6 +87,12 @@ void task_remove(uint8_t id) {
 	tasks[id].stack = NULL;
 }
 
+void task_yield(void) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		task_schedule_unsafe();
+	}
+}
+
 void tasks_start(void) {
 	// Initialize idle task
 	// It is initialized only this far (task_add() is not called) on purpose:
@@ -96,6 +103,7 @@ void tasks_start(void) {
 	tasks[IDLE_TASK].status = TASK_SCHEDULED;
 	current_task = IDLE_TASK;
 
+	// Switch to the initialized task with the highest priority
 	task_schedule_unsafe();
 }
 

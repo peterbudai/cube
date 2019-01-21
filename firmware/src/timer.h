@@ -11,6 +11,8 @@
 #ifndef _TIMER_H_
 #define _TIMER_H_
 
+#ifndef NO_TIMER
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -107,4 +109,6 @@ bool timer_has_elapsed_unsafe(uint16_t since, uint16_t wait_ms);
  */
 void timer_wait(uint16_t wait_ms);
 
-#endif
+#endif // NO_TIMER
+
+#endif // _TIMER_H_

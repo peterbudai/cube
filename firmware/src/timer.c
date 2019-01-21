@@ -1,5 +1,7 @@
 #include "timer.h"
 
+#ifndef NO_TIMER
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/atomic.h>
@@ -110,3 +112,5 @@ void timer_wait(uint16_t ms) {
 		}
 	}
 }
+
+#endif // NO_TIMER
