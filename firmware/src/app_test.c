@@ -21,25 +21,33 @@ void app_test(void) {
 #endif
 	while(true) {
 #ifndef NO_CUBE
-		uint8_t* frame = cube_advance_frame(TIMER_INFINITE);
-		clear_frame(frame);
-		set_plane(frame, m, i, f);
-		if(++i >= 8) {
-			i = 0;
-			if(++m >= 3) {
-				m = 0;
-				if(++c == 'Z' + 1) {
-					c = 'A';
-				}
-				font_load(f, c);
-			}
-		}
-
 #ifndef NO_USART
+		uint8_t* frame = cube_advance_frame(TIMER_INFINITE);
+#else
+		uint8_t* frame = cube_advance_frame(125);
+		if(frame) {
+#endif // NO_USART
+			clear_frame(frame);
+			set_plane(frame, m, i, f);
+			if(++i >= 8) {
+				i = 0;
+				if(++m >= 3) {
+					m = 0;
+					if(++c == 'Z' + 1) {
+						c = 'A';
+					}
+					font_load(f, c);
+				}
+			}
+#ifdef NO_USART
+		}
+#else
 		if(usart_receive_bytes(&c, 1, 125)) {
 			font_load(f, c);
 		}
 #endif // NO_USART
+#else
+		timer_wait(125);
 #endif // NO_CUBE
 	}
 }

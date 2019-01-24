@@ -90,8 +90,10 @@ static void handle_uart_xoff(struct avr_irq_t* irq __attribute__((unused)), uint
 }
 
 void mcu_init(int argc, char** argv) {
+	// Parse command line arguments
 	int gdb_port = 0;
 	bool gdb_stopped = false;
+	bool trace = false;
 	int drop_rate = 0;
 	for(int i = 1; i < argc; ++i) {
 		if(strcmp(argv[i], "-g") == 0) {
@@ -105,6 +107,10 @@ void mcu_init(int argc, char** argv) {
 			gdb_stopped = true;
 			continue;
 		}
+		if(strcmp(argv[i], "-t") == 0) {
+			trace = true;
+			continue;
+		}
 		if(strcmp(argv[i], "-d") == 0) {
 			if(i + 1 >= argc || (drop_rate = atoi(argv[++i])) <= 0 || drop_rate > 100) {
 				printf("Missing or invalid drop rate\n");
@@ -114,14 +120,21 @@ void mcu_init(int argc, char** argv) {
 		}
 	}
 
+	// Load firmware
 	memset(shift_reg, 0, sizeof(shift_reg));
 	elf_firmware_t fw;
 	elf_read_firmware("../firmware/out/firmware.elf", &fw);
 
+	// Initialize simulated MCU
 	mcu = avr_make_mcu_by_name(MCU_NAME);
 	avr_init(mcu);
 	avr_load_firmware(mcu, &fw);
 	mcu->frequency = MCU_FREQ;
+	if(trace) {
+		// For this to work, simavr must be compiled with -DCONFIG_SIMAVR_TRACE=1
+		mcu->log = LOG_TRACE;
+		mcu->trace = 1;
+	}
 	if(gdb_port > 0) {
 		mcu->gdb_port = gdb_port;
 		avr_gdb_init(mcu);
@@ -130,6 +143,7 @@ void mcu_init(int argc, char** argv) {
 		}
 	}
 
+	// Connect virtual peripherials
 	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('D'), 2), handle_status_led, NULL);
 	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('D'), 3), handle_leds_enable, NULL);
 	avr_irq_register_notify(avr_io_getirq(mcu, AVR_IOCTL_IOPORT_GETIRQ('C'), 4), handle_leds_shift, NULL);

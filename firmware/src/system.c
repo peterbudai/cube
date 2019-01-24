@@ -18,15 +18,13 @@ fifo_t system_send_fifo;
 #endif
 
 void system_task_init(void) {
+	// Init task descriptor
+    task_init(SYSTEM_TASK, SYSTEM_STACK_START, SYSTEM_STACK_SIZE);
+
 #ifndef NO_USART
 	// Init USART buffers
     fifo_init(&system_recv_fifo, system_recv_buffer, SYSTEM_RECV_BUFFER_SIZE);
     fifo_init(&system_send_fifo, system_send_buffer, SYSTEM_SEND_BUFFER_SIZE);
-#endif
-
-	// Init task descriptor
-    task_init(SYSTEM_TASK, SYSTEM_STACK_START, SYSTEM_STACK_SIZE);
-#ifndef NO_USART
 	tasks[SYSTEM_TASK].recv_fifo = &system_recv_fifo;
 	tasks[SYSTEM_TASK].send_fifo = &system_send_fifo;
 #endif
@@ -52,21 +50,12 @@ void system_run(void) {
 
 	// Start running background operations
 	for(uint8_t i = 0;;++i) {
-#ifndef NO_TIMER
-		timer_wait(100);
-#else
+		timer_wait(1000);
 		if(i % 2 == 0) {
-			tasks[SYSTEM_TASK].status = TASK_SCHEDULED | TASK_WAITING;
-#ifndef NO_LED
 			led_on();
 		} else {
 			led_off();
 		}
-#else
-		}
-		task_yield();
-#endif // NO_LED
-#endif // NO_TIMER
 	}
 
 	// Prepare shutting down

@@ -12,9 +12,11 @@
 #define LED_BIT_INDEX PORTD2
 #define LED_BIT (1 << LED_BIT_INDEX)
 
+#ifndef NO_LED_INT
 ISR(INT0_vect) {
 	task_schedule_unsafe();
 }
+#endif
 
 void led_init(void) {
 	// Set output port
@@ -23,10 +25,12 @@ void led_init(void) {
 	// Led is off by default
 	led_off();
 
+#ifndef NO_LED_INT
 	// Set up interrupt on rising edge (led_on)
 	EIFR = (1 << INTF0);
 	EICRA |= (1 << ISC01) | (1<< ISC00);
 	EIMSK |= (1 << INT0);
+#endif
 }
 
 void led_on(void) {
