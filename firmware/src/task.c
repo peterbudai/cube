@@ -62,8 +62,8 @@ void task_start(uint8_t id, task_func_t func) {
 
 	// Prepare stack
 	uint8_t* stack = tasks[id].stack_start - 36;
-	// SREG (interrupts disabled)
-	stack[1] = 0;
+	// SREG (interrupts enabled)
+	stack[1] = 0x80;
 	// R0..R31
 	for(uint8_t i = 2; i <= 33; ++i) {
 		stack[i] = 0;
@@ -119,6 +119,7 @@ void tasks_run(void) {
 	current_task = IDLE_TASK;
 
 	// Switch to the initialized task with the highest priority
+	sei();
 	task_schedule_unsafe();
 
 	// Idle task will continue here

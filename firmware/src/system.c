@@ -2,6 +2,7 @@
 
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include <util/atomic.h>
 
 #include "cpu.h"
 #include "cube.h"
@@ -31,22 +32,22 @@ void system_task_init(void) {
 }
 
 void system_run(void) {
-	// Init peripherials and interrupt handlers
+	ATOMIC_BLOCK(ATOMIC_FORCEON) {
+		// Init peripherials and interrupt handlers
 #ifndef NO_LED
-	led_init();
-#endif
-#ifndef NO_CUBE
-	cube_init();
+		led_init();
 #endif
 #ifndef NO_TIMER
-	timer_init();
+		timer_init();
+#endif
+#ifndef NO_CUBE
+		cube_init();
 #endif
 #ifndef NO_USART
-	usart_init();
+		usart_init();
 #endif
-
-	set_sleep_mode(SLEEP_MODE_IDLE);
-	sei();
+		set_sleep_mode(SLEEP_MODE_IDLE);
+	}
 
 	// Start running background operations
 	for(;;) {
@@ -58,11 +59,11 @@ void system_run(void) {
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
 	// Disable all peripherials and interrupt sources
-#ifndef NO_CUBE
-	cube_disable();
-#endif
 #ifndef NO_USART
 	usart_stop();
+#endif
+#ifndef NO_CUBE
+	cube_disable();
 #endif
 #ifndef NO_TIMER
 	timer_stop();
