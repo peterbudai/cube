@@ -7,23 +7,16 @@
 #include "led.h"
 #include "timer.h"
 
-void app_off(void) {
+void app_standby(void) {
 #ifndef NO_CUBE
 	cube_disable();
 #endif
-
-	for(bool led = false; true; led = (led ? false : true)) {
 #ifndef NO_LED
-		if(led) {
-			led_off();
-		} else {
-			led_on();
-		}
-#endif
-#ifndef NO_TIMER
+	for(;;) {
+		led_off();
+		timer_wait(4750);
+		led_on();
 		timer_wait(250);
-#else
-		cpu_sleep();
-#endif
 	}
+#endif
 }

@@ -49,13 +49,8 @@ void system_run(void) {
 	sei();
 
 	// Start running background operations
-	for(uint8_t i = 0;;++i) {
+	for(;;) {
 		timer_wait(1000);
-		if(i % 2 == 0) {
-			led_on();
-		} else {
-			led_off();
-		}
 	}
 
 	// Prepare shutting down

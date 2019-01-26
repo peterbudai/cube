@@ -4,14 +4,13 @@
  *
  * @copyright (C) 2017 Peter Budai
  */
-
-#ifndef _APP_H_
-#define _APP_H_
+#pragma once
 
 #include "cpu.h"
 #include "system.h"
 #include "task.h"
 
+/// Application task properties
 #define APP_TASK 1
 #define APP_STACK_START (SYSTEM_STACK_START - SYSTEM_STACK_SIZE)
 #define APP_STACK_SIZE (APP_STACK_START - CPU_STACK_END + 1)
@@ -34,10 +33,11 @@ void app_tasks_init(void);
 /// @{
 
 /**
- * This app turns the cube off completely and simply waits for other command.
+ * This app puts the cube into standby mode by completely turning the cube off,
+ * and waiting for other app to start.
  * App index is 0.
  */
-void app_off(void);
+void app_standby(void);
 
 /**
  * General test app that scrolls various letters and symbols, automatically
@@ -47,5 +47,3 @@ void app_off(void);
 void app_test(void);
 
 /// @}
-
-#endif

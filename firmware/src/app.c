@@ -23,6 +23,6 @@ void app_tasks_init(void) {
 #endif
 
 	// Fill applications list
-	apps[0] = app_off;
+	apps[0] = app_standby;
 	apps[1] = app_test;
 }

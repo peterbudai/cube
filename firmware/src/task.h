@@ -1,5 +1,4 @@
-#ifndef _TASK_H_
-#define _TASK_H_
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -37,12 +36,13 @@ typedef struct task {
 #endif
 } task_t;
 
+/// Task function prototype.
 typedef void (*task_func_t)(void);
 
 /// Number of available task slots.
 #define TASK_COUNT 3
 
-/// Identifier of the (always present) idle task
+/// Parameters of the (always present) idle task
 #define IDLE_TASK (TASK_COUNT - 1)
 #define IDLE_STACK_START CPU_STACK_START
 #define IDLE_STACK_SIZE 64
@@ -62,28 +62,54 @@ void task_init(uint8_t id, void* stack_start, size_t stack_size);
 
 /**
  * Schedules a function to be run on the given task slot.
+ * The task will get executed as soon as no higher priority tasks are available.
  * @param id Task slot identifier.
  * @param func Function to run.
  */
-void task_add(uint8_t id, task_func_t func);
+void task_start(uint8_t id, task_func_t func);
 
 /**
- * Removes a function from a task slot.
+ * Removes a function from a task slot, so it won't be executed anymore.
  * @param id Task slot identifier.
  */
-void task_remove(uint8_t id);
+void task_stop(uint8_t id);
 
-/// Calls the scheduler and yields execution to another, higher priority
-/// task, if it is available to run.
+/**
+ * Stops the current task.
+ */
+void task_exit(void);
+
+/**
+ * Calls the scheduler and yields execution to another, higher priority
+ * task, if it is available to run.
+ */
 void task_yield(void);
 
-/// Starts the task scheduler and returns.
-/// This function have to be called from main(), which will become
-/// the idle task.
-void tasks_start(void);
+/**
+ * Starts the task scheduler, and schedules the first available task.
+ * It should be normally called from main(), right after the task system
+ * was initialized.
+ * This function never returns, it becomes the idle task.
+ */
+void tasks_run(void) __attribute__((noreturn));
 
+/**
+ * @name Faster, thread-unsafe functions to be called from other subsytems.
+ * Do not call these from task functions.
+ */
+/// @{
+
+/**
+ * Returns the descriptor of the currently executing task.
+ * @return Pointer to the task descriptor structure.
+ */
 task_t* task_current_unsafe(void);
 
+/**
+ * Switches to the next available task that is not waiting on any peripherial
+ * or the timer subsystem.
+ * Interrupts must not be enabled, otherwise the tasks switch will crash.
+ */
 void task_schedule_unsafe(void);
 
-#endif
+/// @}

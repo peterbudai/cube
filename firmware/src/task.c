@@ -32,9 +32,9 @@ void task_init(uint8_t id, void* stack_start, size_t stack_size) {
 
 	tasks[id].status = TASK_STOPPED;
 	tasks[id].stack = NULL;
-    tasks[id].stack_start = stack_start - 1;
-	stack_store_addr(tasks[id].stack_start, cpu_reset);
-    tasks[id].stack_end = stack_start - stack_size + 1;
+	tasks[id].stack_start = stack_start - 1;
+	stack_store_addr(tasks[id].stack_start, task_exit);
+	tasks[id].stack_end = stack_start - stack_size + 1;
 	stack_store_canary(tasks[id].stack_end);
 #ifndef NO_USART
 	tasks[id].recv_fifo = NULL;
@@ -42,7 +42,7 @@ void task_init(uint8_t id, void* stack_start, size_t stack_size) {
 #endif
 }
 
-void task_add(uint8_t id, task_func_t func) {
+void task_start(uint8_t id, task_func_t func) {
 	// Stack layout after adding:
 	//
 	// Address						Contents
@@ -79,12 +79,27 @@ void task_add(uint8_t id, task_func_t func) {
 #endif
 
 	// Enable
-	tasks[id].status = TASK_SCHEDULED;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		tasks[id].status = TASK_SCHEDULED;
+	}
 }
 
-void task_remove(uint8_t id) {
+static void task_remove_unsafe(uint8_t id) {
 	tasks[id].status = TASK_STOPPED;
 	tasks[id].stack = NULL;
+}
+
+void task_stop(uint8_t id) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		task_remove_unsafe(id);
+	}
+}
+
+void task_exit(void) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		task_remove_unsafe(current_task);
+		task_schedule_unsafe();
+	}
 }
 
 void task_yield(void) {
@@ -93,7 +108,7 @@ void task_yield(void) {
 	}
 }
 
-void tasks_start(void) {
+void tasks_run(void) {
 	// Initialize idle task
 	// It is initialized only this far (task_add() is not called) on purpose:
 	//  - Idle task doesn't need FIFO.
@@ -105,9 +120,21 @@ void tasks_start(void) {
 
 	// Switch to the initialized task with the highest priority
 	task_schedule_unsafe();
+
+	// Idle task will continue here
+	for(;;) {
+#ifndef NO_TIMER
+		// We have one or more other tasks that are waiting for some event:
+		// an interrupt will wake them if their wait condition are met.
+		cpu_sleep();
+#else
+		// Cooperative multitasking: schedule other tasks.
+		task_yield();
+#endif
+	}
 }
 
-__attribute__((noinline, naked)) static void task_switch(uint8_t new_task) {
+__attribute__((noinline, naked)) static void task_switch_unsafe(uint8_t new_task) {
 	// Stack layout after saving context:
 	//
 	// Address		Contents
@@ -225,6 +252,6 @@ void task_schedule_unsafe(void) {
 		cpu_reset();
 	}
 	if(next_task != current_task) {
-		task_switch(next_task);
+		task_switch_unsafe(next_task);
 	}
 }

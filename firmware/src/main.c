@@ -27,19 +27,7 @@ int main(void)
 	app_tasks_init();
 
 	// Pass control to system task
-	task_add(SYSTEM_TASK, system_run);
-	// task_add(APP_TASK, apps[1]);
-	tasks_start();
-
-	// Idle task will continue here
-	for(uint8_t i=0;;++i) {
-#ifndef NO_TIMER
-		cpu_sleep();
-#else
-		if(i % 2 == 0) {
-			tasks[SYSTEM_TASK].status = TASK_SCHEDULED;
-		}
-		task_yield();
-#endif
-	}
+	task_start(SYSTEM_TASK, system_run);
+	task_start(APP_TASK, apps[0]);
+	tasks_run();
 }
