@@ -51,9 +51,9 @@ void task_start(uint8_t id, task_func_t func) {
 	// task.stack_start				HI(cpu_reset)
 	// task.stack+35 				LO(PC)
 	// task.stack+34 				HI(PC)
-	// task.stack+33 				R31
-	// ... (31 bytes) ...
-	// task.stack+02 				R0
+	// task.stack+33 				R0
+	// ... (30 bytes) ...
+	// task.stack+02 				R31
 	// task.stack+01 				SREG
 	// task.stack					(future SP)
 	// ...
@@ -64,7 +64,7 @@ void task_start(uint8_t id, task_func_t func) {
 	uint8_t* stack = tasks[id].stack_start - 36;
 	// SREG (interrupts enabled)
 	stack[1] = 0x80;
-	// R0..R31
+	// R31..R0
 	for(uint8_t i = 2; i <= 33; ++i) {
 		stack[i] = 0;
 	}
@@ -142,47 +142,49 @@ __attribute__((noinline, naked)) static void task_switch_unsafe(uint8_t new_task
 	// -------		--------
 	// SP+35 		LO(PC)
 	// SP+34 		HI(PC)
-	// SP+33 		R31
+	// SP+33 		R0
 	// ...
-	// SP+02 		R0
+	// SP+02 		R31
 	// SP+01 		SREG
 	// SP+00
 
 	// Save context
 	// PC is saved when calling this function
 	asm volatile(
-		"push r31 \n\t"
-		"push r30 \n\t"
-		"push r29 \n\t"
-		"push r28 \n\t"
-		"push r27 \n\t"
-		"push r26 \n\t"
-		"push r25 \n\t"
-		"push r24 \n\t"
-		"push r23 \n\t"
-		"push r22 \n\t"
-		"push r21 \n\t"
-		"push r20 \n\t"
-		"push r19 \n\t"
-		"push r18 \n\t"
-		"push r17 \n\t"
-		"push r16 \n\t"
-		"push r15 \n\t"
-		"push r14 \n\t"
-		"push r13 \n\t"
-		"push r12 \n\t"
-		"push r11 \n\t"
-		"push r10 \n\t"
-		"push r9 \n\t"
-		"push r8 \n\t"
-		"push r7 \n\t"
-		"push r6 \n\t"
-		"push r5 \n\t"
-		"push r4 \n\t"
-		"push r3 \n\t"
-		"push r2 \n\t"
-		"push r1 \n\t"
+		// Save all registers R0..R31
 		"push r0 \n\t"
+		"push r1 \n\t"
+		"push r2 \n\t"
+		"push r3 \n\t"
+		"push r4 \n\t"
+		"push r5 \n\t"
+		"push r6 \n\t"
+		"push r7 \n\t"
+		"push r8 \n\t"
+		"push r9 \n\t"
+		"push r10 \n\t"
+		"push r11 \n\t"
+		"push r12 \n\t"
+		"push r13 \n\t"
+		"push r14 \n\t"
+		"push r15 \n\t"
+		"push r16 \n\t"
+		"push r17 \n\t"
+		"push r18 \n\t"
+		"push r19 \n\t"
+		"push r20 \n\t"
+		"push r21 \n\t"
+		"push r22 \n\t"
+		"push r23 \n\t"
+		"push r24 \n\t"
+		"push r25 \n\t"
+		"push r26 \n\t"
+		"push r27 \n\t"
+		"push r28 \n\t"
+		"push r29 \n\t"
+		"push r30 \n\t"
+		"push r31 \n\t"
+		// Save SREG
 		"in r0, %0 \n\t"
 		"push r0 \n\t"
 		"" :: "i" _SFR_IO_ADDR(SREG)
@@ -197,40 +199,44 @@ __attribute__((noinline, naked)) static void task_switch_unsafe(uint8_t new_task
 	// Restore context
 	// PC is restored after returning from this function
 	asm volatile(
+		// Load SREG to R0 temporarily
 		"pop r0 \n\t"
-		"out %0, r0 \n\t"
-		"pop r0 \n\t"
-		"pop r1 \n\t"
-		"pop r2 \n\t"
-		"pop r3 \n\t"
-		"pop r4 \n\t"
-		"pop r5 \n\t"
-		"pop r6 \n\t"
-		"pop r7 \n\t"
-		"pop r8 \n\t"
-		"pop r9 \n\t"
-		"pop r10 \n\t"
-		"pop r11 \n\t"
-		"pop r12 \n\t"
-		"pop r13 \n\t"
-		"pop r14 \n\t"
-		"pop r15 \n\t"
-		"pop r16 \n\t"
-		"pop r17 \n\t"
-		"pop r18 \n\t"
-		"pop r19 \n\t"
-		"pop r20 \n\t"
-		"pop r21 \n\t"
-		"pop r22 \n\t"
-		"pop r23 \n\t"
-		"pop r24 \n\t"
-		"pop r25 \n\t"
-		"pop r26 \n\t"
-		"pop r27 \n\t"
-		"pop r28 \n\t"
-		"pop r29 \n\t"
-		"pop r30 \n\t"
+		// Restore R31..R1 only (R0 has SREG contents)
 		"pop r31 \n\t"
+		"pop r30 \n\t"
+		"pop r29 \n\t"
+		"pop r28 \n\t"
+		"pop r27 \n\t"
+		"pop r26 \n\t"
+		"pop r25 \n\t"
+		"pop r24 \n\t"
+		"pop r23 \n\t"
+		"pop r22 \n\t"
+		"pop r21 \n\t"
+		"pop r20 \n\t"
+		"pop r19 \n\t"
+		"pop r18 \n\t"
+		"pop r17 \n\t"
+		"pop r16 \n\t"
+		"pop r15 \n\t"
+		"pop r14 \n\t"
+		"pop r13 \n\t"
+		"pop r12 \n\t"
+		"pop r11 \n\t"
+		"pop r10 \n\t"
+		"pop r9 \n\t"
+		"pop r8 \n\t"
+		"pop r7 \n\t"
+		"pop r6 \n\t"
+		"pop r5 \n\t"
+		"pop r4 \n\t"
+		"pop r3 \n\t"
+		"pop r2 \n\t"
+		"pop r1 \n\t"
+		// Set SREG
+		"out %0, r0 \n\t"
+		// We can finally restore R0 as well
+		"pop r0 \n\t"
 		"ret \n\t"
 		"" :: "i" _SFR_IO_ADDR(SREG)
 	);
