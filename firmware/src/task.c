@@ -233,9 +233,19 @@ __attribute__((noinline, naked)) static void task_switch_unsafe(uint8_t new_task
 		"pop r3 \n\t"
 		"pop r2 \n\t"
 		"pop r1 \n\t"
-		// Set SREG
+		// Make sure that interrupts are not enabled until returning from this function
+		"sbrs r0, 7 \n\t"
+		"rjmp 1f \n\t"
+		// Interrupts enabled in saved SREG: clear interrupt flag before restoring SREG,
+		// but reenable them right after returning using RETI instruction
+		"clt \n\t"
+		"bld r0, 7 \n\t"
 		"out %0, r0 \n\t"
-		// We can finally restore R0 as well
+		"pop r0 \n\t"
+		"reti \n\t"
+		// Interrupts disabled: easy case, simply restore SREG, R0 and return normally
+		"1: \n\t"
+		"out %0, r0 \n\t"
 		"pop r0 \n\t"
 		"ret \n\t"
 		"" :: "i" _SFR_IO_ADDR(SREG)
