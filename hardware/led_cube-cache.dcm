@@ -1,0 +1,8 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP TPIC6C595
+D Power Logic 8-Bit Shift Register
+K 595
+$ENDCMP
+#
+#End Doc Library
