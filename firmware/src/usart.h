@@ -25,6 +25,7 @@ void usart_init(void);
 /// Stops USART reception and transmission.
 void usart_stop(void);
 
+#ifndef NO_USART_RECV
 /**
  * Returns or waits for the next count number of received bytes from the
  * input queue. If there is not enough received bytes available, it waits for
@@ -38,7 +39,9 @@ void usart_stop(void);
  *     False if less than count bytes were available until wait_ms elapsed.
  */
 bool usart_receive_bytes(uint8_t* dest, size_t count, uint16_t wait_ms);
+#endif
 
+#ifndef NO_USART_SEND
 /**
  * Sends or waits for the next count number of bytes to be placed into the
  * output queue. If the output queue is full, it waits for at most the given
@@ -52,6 +55,7 @@ bool usart_receive_bytes(uint8_t* dest, size_t count, uint16_t wait_ms);
  *     False if less than count bytes of space were available until wait_ms elapsed.
  */
 bool usart_send_bytes(const uint8_t* src, size_t count, uint16_t wait_ms);
+#endif
 
 #endif // NO_USART
 

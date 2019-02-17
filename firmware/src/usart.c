@@ -16,26 +16,25 @@
 #include "task.h"
 #include "timer.h"
 
-// Port helper macros
-#define USART_SEND_BITS ((1 << TXEN0) | (1 << UDRIE0))
-#define USART_RECEIVE_BITS ((1 << RXEN0) | (1 << RXCIE0))
-
-#define usart_send_on()	UCSR0B |= USART_SEND_BITS
-#define usart_send_off() UCSR0B &= ~USART_SEND_BITS
-#define usart_receive_on()	UCSR0B |= USART_RECEIVE_BITS
-#define usart_receive_off() UCSR0B &= ~USART_RECEIVE_BITS
-
 // Framing constants
 #define USART_FRAME_BYTE 0x7E
 #define USART_ESCAPE_BYTE 0x7D
 #define USART_ESCAPE_MASK 0x20
 
+// Framing helper marcros
 #define USART_ADDRESS_BITS 1
 #define USART_LENGTH_BITS (8 - USART_ADDRESS_BITS)
 #define USART_LENGTH_MAX ((1 << USART_LENGTH_BITS) - 1)
 #define usart_get_message_address(header) ((header) >> USART_LENGTH_BITS)
 #define usart_get_message_length(header) ((header) & USART_LENGTH_MAX)
 #define usart_get_message_header(address, length) (((address) << USART_LENGTH_BITS) | ((length) & USART_LENGTH_MAX))
+
+#ifndef NO_USART_RECV
+
+// Port helper macros
+#define USART_RECEIVE_BITS ((1 << RXEN0) | (1 << RXCIE0))
+#define usart_receive_on()	UCSR0B |= USART_RECEIVE_BITS
+#define usart_receive_off() UCSR0B &= ~USART_RECEIVE_BITS
 
 // Possible states of the receiver
 typedef enum {
@@ -61,33 +60,6 @@ uint8_t input_task;
 uint8_t input_length;
 // Holds the current CRC value of the message bytes already received
 uint8_t input_crc;
-
-// Possible states of the transmitter
-typedef enum {
-	// We are after a frame boundary, ready to send the next message
-	OUTPUT_IDLE,
-	// The message being transmitted starts with an escaped header
-	OUTPUT_IDLE_ESCAPE,
-	// The header of the message has been sent and there are still some body bytes to send
-	OUTPUT_MESSAGE,
-	// The current body byte is escaped
-	OUTPUT_MESSAGE_ESCAPE,
-	// The full message has been sent, only CRC byte is left to send
-	OUTPUT_CRC,
-	// The CRC byte is escaped
-	OUTPUT_CRC_ESCAPE,
-	// The CRC has been sent, a frame boundary has to be sent
-	OUTPUT_FRAME_END
-} output_state_t;
-
-// Current transmitter state
-output_state_t output_state;
-// Task buffer for the currently sent bytes
-uint8_t output_task;
-// Number of body bytes still left to be sent
-uint8_t output_length;
-// Holds the current CRC value of the message bytes already processed
-uint8_t output_crc;
 
 // Received data ready interrupt handler
 ISR(USART_RX_vect) {
@@ -201,8 +173,8 @@ ISR(USART_RX_vect) {
 				// CRC OK, process the frame
 				fifo_commit_push(tasks[input_task].recv_fifo);
 				// Wake up task if it is waiting for receive
-				if(tasks[output_task].status & TASK_WAIT_RECV) {
-					tasks[output_task].status &= ~TASK_WAITING;
+				if(tasks[input_task].status & TASK_WAIT_RECV) {
+					tasks[input_task].status &= ~TASK_WAITING;
 					wake = true;
 				}
 			}
@@ -215,6 +187,42 @@ ISR(USART_RX_vect) {
 		task_schedule_unsafe();
 	}
 }
+
+#endif // NO_USART_RECV
+
+#ifndef NO_USART_SEND
+
+// Port helper macros
+#define USART_SEND_BITS ((1 << TXEN0) | (1 << UDRIE0))
+#define usart_send_on()	UCSR0B |= USART_SEND_BITS
+#define usart_send_off() UCSR0B &= ~USART_SEND_BITS
+
+// Possible states of the transmitter
+typedef enum {
+	// We are after a frame boundary, ready to send the next message
+	OUTPUT_IDLE,
+	// The message being transmitted starts with an escaped header
+	OUTPUT_IDLE_ESCAPE,
+	// The header of the message has been sent and there are still some body bytes to send
+	OUTPUT_MESSAGE,
+	// The current body byte is escaped
+	OUTPUT_MESSAGE_ESCAPE,
+	// The full message has been sent, only CRC byte is left to send
+	OUTPUT_CRC,
+	// The CRC byte is escaped
+	OUTPUT_CRC_ESCAPE,
+	// The CRC has been sent, a frame boundary has to be sent
+	OUTPUT_FRAME_END
+} output_state_t;
+
+// Current transmitter state
+output_state_t output_state;
+// Task buffer for the currently sent bytes
+uint8_t output_task;
+// Number of body bytes still left to be sent
+uint8_t output_length;
+// Holds the current CRC value of the message bytes already processed
+uint8_t output_crc;
 
 // Ready to send data interrupt handler
 ISR(USART_UDRE_vect) {
@@ -321,6 +329,8 @@ ISR(USART_UDRE_vect) {
 	}
 }
 
+#endif // NO_USART_SEND
+
 void usart_init(void) {
 	// Set up baud rate
 	UBRR0H = UBRRH_VALUE;
@@ -330,27 +340,36 @@ void usart_init(void) {
 	// Set frame format to 8N1
 	UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
 
+#ifndef NO_USART_SEND
+	output_state = OUTPUT_FRAME_END;
+	output_task = TASK_COUNT;
+	output_length = 0;
+#endif
+
+#ifndef NO_USART_RECV
 	// Init state machines
 	input_state = INPUT_ERROR;
 	input_task = TASK_COUNT;
 	input_length = 0;
 
-	output_state = OUTPUT_FRAME_END;
-	output_task = TASK_COUNT;
-	output_length = 0;
-
 	// Enable receive via interrupts
 	// Transmit will be enabled as soon as the first message is sent
 	usart_receive_on();
+#endif
 }
 
 void usart_stop(void) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+#ifndef NO_USART_RECV
 		usart_receive_off();
+#endif
+#ifndef NO_USART_SEND
 		usart_send_off();
+#endif
 	}
 }
 
+#ifndef NO_USART_RECV
 bool usart_receive_bytes(uint8_t* dest, size_t count, uint16_t wait_ms) {
 	bool ret = false;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -377,7 +396,9 @@ bool usart_receive_bytes(uint8_t* dest, size_t count, uint16_t wait_ms) {
 	}
 	return ret;
 }
+#endif
 
+#ifndef NO_USART_SEND
 bool usart_send_bytes(const uint8_t* src, size_t count, uint16_t wait_ms) {
 	bool ret = false;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -401,8 +422,12 @@ bool usart_send_bytes(const uint8_t* src, size_t count, uint16_t wait_ms) {
 
 		// If enough space is available, copy from input buffer
 		ret = fifo_push_bytes(task->send_fifo, src, count);
+		if(ret) {
+			usart_send_on();
+		}
 	}
 	return ret;
 }
+#endif
 
 #endif // NO_USART
