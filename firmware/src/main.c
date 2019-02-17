@@ -28,6 +28,5 @@ int main(void)
 
 	// Pass control to system task
 	task_start(SYSTEM_TASK, system_run);
-	task_start(APP_TASK, apps[0]);
 	tasks_run();
 }

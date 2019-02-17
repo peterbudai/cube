@@ -4,6 +4,7 @@
 #include <avr/sleep.h>
 #include <util/atomic.h>
 
+#include "app.h"
 #include "cpu.h"
 #include "cube.h"
 #include "led.h"
@@ -32,8 +33,8 @@ void system_task_init(void) {
 }
 
 void system_run(void) {
+	// Init peripherials and interrupt handlers
 	ATOMIC_BLOCK(ATOMIC_FORCEON) {
-		// Init peripherials and interrupt handlers
 #ifndef NO_LED
 		led_init();
 #endif
@@ -50,25 +51,25 @@ void system_run(void) {
 	}
 
 	// Start running background operations
+	task_start(APP_TASK, apps[1]);
 	for(;;) {
 		timer_wait(1000);
 	}
 
-	// Prepare shutting down
-	cli();
-	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-
 	// Disable all peripherials and interrupt sources
+	ATOMIC_BLOCK(NONATOMIC_FORCEOFF) {
 #ifndef NO_USART
-	usart_stop();
+		usart_stop();
 #endif
 #ifndef NO_CUBE
-	cube_disable();
+		cube_disable();
 #endif
 #ifndef NO_TIMER
-	timer_stop();
+		timer_stop();
 #endif
 #ifndef NO_LED
-	led_off();
+		led_off();
 #endif
+		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+	}
 }
