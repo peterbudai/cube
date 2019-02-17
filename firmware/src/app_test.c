@@ -10,7 +10,6 @@
 #include "usart.h"
 
 void app_test(void) {
-#ifndef NO_CUBE
 	uint8_t m = 0;
 	uint8_t i = 0;
 	char c = 'A';
@@ -18,36 +17,23 @@ void app_test(void) {
 
 	font_load(f, c);
 	cube_enable();
-#endif
 	while(true) {
-#ifndef NO_CUBE
-#ifndef NO_USART
 		uint8_t* frame = cube_advance_frame(TIMER_INFINITE);
-#else
-		uint8_t* frame = cube_advance_frame(125);
-		if(frame) {
-#endif // NO_USART
-			clear_frame(frame);
-			set_plane(frame, m, i, f);
-			if(++i >= 8) {
-				i = 0;
-				if(++m >= 3) {
-					m = 0;
-					if(++c == 'Z' + 1) {
-						c = 'A';
-					}
-					font_load(f, c);
+		clear_frame(frame);
+		set_plane(frame, m, i, f);
+		if(++i >= 8) {
+			i = 0;
+			if(++m >= 3) {
+				m = 0;
+				if(++c == 'Z' + 1) {
+					c = 'A';
 				}
+				font_load(f, c);
+				usart_send_bytes(f, FONT_CHAR_SIZE, 0);
 			}
-#ifdef NO_USART
 		}
-#else
-		if(usart_receive_bytes(&c, 1, 125)) {
+		if(usart_receive_bytes((uint8_t*)&c, 1, 125)) {
 			font_load(f, c);
 		}
-#endif // NO_USART
-#else
-		timer_wait(125);
-#endif // NO_CUBE
 	}
 }
