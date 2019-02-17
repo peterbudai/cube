@@ -76,7 +76,7 @@ uint16_t timer_get_current(void) {
 }
 
 uint16_t timer_get_elapsed_unsafe(uint16_t since) {
-	return since <= timer_value ? timer_value - since : UINT16_MAX - since + timer_value;
+	return since <= timer_value ? timer_value - since : UINT16_MAX - since + timer_value + 1;
 }
 
 uint16_t timer_get_elapsed(uint16_t since) {
