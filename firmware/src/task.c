@@ -109,20 +109,23 @@ void task_yield(void) {
 }
 
 void tasks_run(void) {
-	// Initialize idle task
-	// It is initialized only this far (task_add() is not called) on purpose:
+	// Initialize idle task.
+	// It is initialized only this far (task_start() is not called) on purpose:
 	//  - Idle task doesn't need FIFO.
-	//  - This setup will result in idle task to take the place of the
-	//    caller function (namely main()), which is our goal here.
+	//  - The idle task shares the same stack as this function, so the stack
+	//    need not be bothered with.
+	// This setup will cause that the idle task will take the place of the
+	// caller function (namely main()), which is our goal here.
 	task_init(IDLE_TASK, IDLE_STACK_START, IDLE_STACK_SIZE);
 	tasks[IDLE_TASK].status = TASK_SCHEDULED;
 	current_task = IDLE_TASK;
 
-	// Switch to the initialized task with the highest priority
+	// Save the current context for the idle task and switch to another
+	// initialized task with the higher priority
 	sei();
 	task_schedule_unsafe();
 
-	// Idle task will continue here
+	// Idle task will continue here, once switched back to it
 	for(;;) {
 #ifndef NO_TIMER
 		// We have one or more other tasks that are waiting for some event:

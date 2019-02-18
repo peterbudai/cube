@@ -21,13 +21,60 @@
 #define USART_ESCAPE_BYTE 0x7D
 #define USART_ESCAPE_MASK 0x20
 
-// Framing helper marcros
+// Framing helper macros
 #define USART_ADDRESS_BITS 1
 #define USART_LENGTH_BITS (8 - USART_ADDRESS_BITS)
 #define USART_LENGTH_MAX ((1 << USART_LENGTH_BITS) - 1)
 #define usart_get_message_address(header) ((header) >> USART_LENGTH_BITS)
 #define usart_get_message_length(header) ((header) & USART_LENGTH_MAX)
 #define usart_get_message_header(address, length) (((address) << USART_LENGTH_BITS) | ((length) & USART_LENGTH_MAX))
+
+// Despite the connection between the remote computer/phone and the LED cube board's
+// Bluetooth module is a reliable RFCOMM stream, we need to implement proper framing
+// because USART does not have any guarantee against data losses (mainly due to
+// overflow) between the MCU and the Bluetooth module.
+//
+// The framing protocol is based on HDLC asynchronous framing:
+// - Each frame begins and ends with a frame delimiter byte (0x7E)
+// - Two frames may share their ending and starting delimiter. Also, consecutive
+//   delimiters are allowed, and interpreted as an idle line.
+// - If the frame data would contain a delimiter byte, it should be escaped with a
+//   byte-stuffed escape byte (0x7D), followed by the escaped data byte with bit 5
+//   inverted (0x7E -> 0x7D 0x5E). The same escape procedure applies to the escape
+//   byte itself if it is found in the data (0x7D -> 0x7D 0x5D). Other bytes need
+//   not be escaped.
+// - Therefore the frame data can contain any bytes, but the transmitted frame data
+//   will never contain the frame delimiter (0x7E).
+//
+// The frame also has an inner structure, which is a simple, custom-made protocol:
+// - A frame always starts with a header byte.
+//   - The upper bit(s) identifies the task that sent, or should receive the frame.
+//     Currently there are two useful tasks, to the address fits in one bit.
+//   - The lower bits hold how many bytes of payload follows the header byte.
+//     All remaining 7 bits allow for lengths between 0 to 127.
+// - Then an arbitrary payload follows with a length between 0 to 127 bytes. Although
+//   a payload length of 0 is valid, it is not used.
+// - Finally, a footer byte closes the frame: it the a CRC-8-CCITT checksum of the
+//   header and the payload. It is there to protect against dropped data or framing
+//   bytes.
+// - All malformed frames are discarded: if the CRC does not match, if the payload
+//   length does not match, or if the expected framing byte is not found in the stream.
+// - All frame bytes are subject to escaping if necessary, including the header, the
+//   payload and the checksum, as well.
+//
+//    ... -+---------+----------+--------- ... --------+----------+---------+- ...
+//         |  0x7E   | ALLLLLLL |    (length bytes)    |  CRC-8   |  0x7E   |
+//    ... -+---------+----------+--------- ... --------+----------+---------+- ...
+//   prev.   framing    header           payload          footer    framing   next
+//   frame    byte                                                   byte     frame
+//
+// Therefore for a 64-byte payload (eg. a whole cube frame), the framing overhead
+// is 4 bytes (6%). For a worst case scenario of all data bytes escaped, the frame
+// becomes 134 bytes long: for a 25 FPS data transfer it needs a bandwidth of
+// 3350 bytes per sec, or 33500 baud. With the 38400 baud rate we use here, we still
+// have room for almost 4 frame retransmissions (15% packet loss).
+// Under normal circumstances, this protocol and the bandwidth should be fine for
+// smooth animation streaming from the host device to the LED cube.
 
 #ifndef NO_USART_RECV
 
