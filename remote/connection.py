@@ -4,6 +4,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtNetwork import *
 from PyQt5.QtBluetooth import *
 
+from crc8 import crc8
 
 class CubeConnection(QObject):
     Disconnected = 0
@@ -24,6 +25,9 @@ class CubeConnection(QObject):
         self.socket = socket
         self.socket.stateChanged.connect(self.onStateChanged)
         self.socket.error.connect(self.onConnectionError)
+        self.socket.readyRead.connect(self.onRead)
+
+        self.readBuffer = QByteArray()
 
     def connectViaTcp(self):
         address = QHostAddress('127.0.0.1')
@@ -48,6 +52,25 @@ class CubeConnection(QObject):
         else:
             self.progress.reset()
         self.stateChanged.emit(state)
+
+    def onRead(self):
+        self.readBuffer.append(self.socket.readAll())
+        while not self.readBuffer.isEmpty():
+            end = self.readBuffer.indexOf(b'\x7E')
+            if end == -1:
+                break;
+            elif end == 0:
+                self.readBuffer.remove(0, 1)
+                continue
+            else:
+                frame = self.readBuffer.left(end)
+                self.readBuffer.remove(0, end + 1)
+                frameAddress = (ord(frame.at(0)) & 0x80) >> 7
+                frameLength = ord(frame.at(0)) & 0x7F
+                frame.replace(b'\x7D\x5E', b'\x7E')
+                frame.replace(b'\x7D\x5D', b'\x7E')
+                frameChecksum = crc8(frame.data()).digest()
+                qDebug('{} {}: {}, {}, {}'.format(frame.toHex(), self.readBuffer.toHex(), frameAddress, frameLength, frameChecksum))
 
     def state(self):
         if self.socket is None or self.socket.state() in {QAbstractSocket.UnconnectedState, QBluetoothSocket.UnconnectedState}:
