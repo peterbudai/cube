@@ -30,12 +30,21 @@ class CubeMainWindow(QMainWindow):
         toolbar.addAction(self.connect_bt)
         toolbar.addAction(self.disconnect)
 
+        self.speedLabel = QLabel('Not connected')
+        self.speedLabel.setFrameStyle(QFrame.Panel | QFrame.Sunken);
+        self.statusBar().setSizeGripEnabled(False)
+        self.statusBar().addWidget(self.speedLabel, 1)
+
         self.show()
 
-    def update_connect_state(self, state):
+    def update_connect_state(self, state, read, write):
         self.connect_tcp.setEnabled(state == CubeConnection.Disconnected)
         self.connect_bt.setEnabled(state == CubeConnection.Disconnected)
         self.disconnect.setEnabled(state == CubeConnection.Connected)
+        if state == CubeConnection.Connected:
+            self.speedLabel.setText('{:.1f} Bps read / {:.1f} Bps write'.format(read, write))
+        else:
+            self.speedLabel.setText('Not connected')
 
 
 if __name__ == '__main__':
