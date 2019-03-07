@@ -48,13 +48,16 @@ class CubeConnection(QObject):
     Connected = 2
     Disconnecting = 3
 
-    stateChanged = pyqtSignal(int, float, float)
+    stateChanged = pyqtSignal(int)
+    speedChanged = pyqtSignal(float, float)
 
     System = 0
     Application = 1
 
     sysDataReceived = pyqtSignal()
     appDataReceived = pyqtSignal()
+    sysDataSent = pyqtSignal()
+    appDataSent = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -70,8 +73,9 @@ class CubeConnection(QObject):
         self.socket.readyRead.connect(self.onRead)
 
         self.readBuffer = QByteArray()
-        self.readSysData = QByteArray()
-        self.readAppData = QByteArray()
+        self.sysDataToRead = QByteArray()
+        self.appDataToRead = QByteArray()
+        self.writeBuffer = QByteArray()
 
         self.speed = CubeConnectionSpeed(10)
         self.speed.updated.connect(self.onSpeedChanged)
@@ -89,6 +93,16 @@ class CubeConnection(QObject):
     def disconnect(self):
         self.socket.close()
 
+    def state(self):
+        if self.socket is None or self.socket.state() in {QAbstractSocket.UnconnectedState, QBluetoothSocket.UnconnectedState}:
+            return CubeConnection.Disconnected
+        elif self.socket.state() in {QAbstractSocket.ConnectedState, QBluetoothSocket.ConnectedState}:
+            return CubeConnection.Connected
+        elif self.socket.state() in {QAbstractSocket.ClosingState, QBluetoothSocket.ClosingState}:
+            return CubeConnection.Disconnecting
+        else:
+            return CubeConnection.Connecting
+
     def onConnectionError(self, error):
         QMessageBox.critical(self.parent(), 'Connection error', self.socket.errorString())
 
@@ -102,10 +116,10 @@ class CubeConnection(QObject):
             self.speed.start()
         else:
             self.speed.stop()
-        self.stateChanged.emit(state, 0, 0)
+        self.stateChanged.emit(state)
 
     def onSpeedChanged(self, read, write):
-        self.stateChanged.emit(self.state(), read, write)
+        self.speedChanged.emit(read, write)
 
     def onRead(self):
         self.speed.bytesRead(self.socket.bytesAvailable())
@@ -131,27 +145,16 @@ class CubeConnection(QObject):
                     qDebug('Frame {}: addr {}, len {}, crc {} not ok'.format(frame.toHex(), frameAddress, frameLength, frameChecksum))
                     continue
                 if frameAddress == CubeConnection.System:
-                    self.readSysData += frame.mid(1, frameLength)
-                    qDebug('Sys frame {}: len {}, crc {} ok, buf {}'.format(frame.toHex(), frameLength, frameChecksum, len(self.readSysData)))
+                    self.sysDataToRead += frame.mid(1, frameLength)
+                    qDebug('Sys frame {}: len {}, crc {} ok, buf {}'.format(frame.toHex(), frameLength, frameChecksum, len(self.sysDataToRead)))
                     received.add(CubeConnection.System)
                 else:
-                    self.readAppData += frame.mid(1, frameLength)
-                    qDebug('App frame {}: len {}, crc {} ok, buf {}'.format(frame.toHex(), frameLength, frameChecksum, len(self.readAppData)))
+                    self.appDataToRead += frame.mid(1, frameLength)
+                    qDebug('App frame {}: len {}, crc {} ok, buf {}'.format(frame.toHex(), frameLength, frameChecksum, len(self.appDataToRead)))
                     received.add(CubeConnection.Application)
 
         if CubeConnection.System in received:
             self.sysDataReceived.emit()
         if CubeConnection.Application in received:
             self.appDataReceived.emit()
-
-    def state(self):
-        if self.socket is None or self.socket.state() in {QAbstractSocket.UnconnectedState, QBluetoothSocket.UnconnectedState}:
-            return CubeConnection.Disconnected
-        elif self.socket.state() in {QAbstractSocket.ConnectedState, QBluetoothSocket.ConnectedState}:
-            return CubeConnection.Connected
-        elif self.socket.state() in {QAbstractSocket.ClosingState, QBluetoothSocket.ClosingState}:
-            return CubeConnection.Disconnecting
-        else:
-            return CubeConnection.Connecting
-
 

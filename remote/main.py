@@ -3,9 +3,11 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from PyQt5.QtChart import *
 import sys
 
 from connection import CubeConnection
+from system import CubeSystemWidget
 
 
 class CubeMainWindow(QMainWindow):
@@ -13,7 +15,8 @@ class CubeMainWindow(QMainWindow):
         super().__init__()
 
         self.connection = CubeConnection()
-        self.connection.stateChanged.connect(self.update_connect_state)
+        self.connection.stateChanged.connect(self.onConnectionStateChanged)
+        self.connection.speedChanged.connect(self.onConnectionSpeedChanged)
 
         self.connect_tcp = QAction(QIcon.fromTheme('network-wired'), 'Connect to simulator')
         self.connect_tcp.triggered.connect(self.connection.connectViaTcp)
@@ -35,16 +38,48 @@ class CubeMainWindow(QMainWindow):
         self.statusBar().setSizeGripEnabled(False)
         self.statusBar().addWidget(self.speedLabel, 1)
 
+        self.systemWidget = CubeSystemWidget(self)
+        self.addDockWidget(Qt.TopDockWidgetArea, self.systemWidget)
+        placeholderLabel = QLabel('No app is running')
+        placeholderLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.setCentralWidget(placeholderLabel)
+
+        self.setMinimumSize(800, 800)
         self.show()
 
-    def update_connect_state(self, state, read, write):
+    def onConnectionStateChanged(self, state):
         self.connect_tcp.setEnabled(state == CubeConnection.Disconnected)
         self.connect_bt.setEnabled(state == CubeConnection.Disconnected)
         self.disconnect.setEnabled(state == CubeConnection.Connected)
-        if state == CubeConnection.Connected:
-            self.speedLabel.setText('{:.1f} Bps read / {:.1f} Bps write'.format(read, write))
-        else:
+        if state != CubeConnection.Connected:
             self.speedLabel.setText('Not connected')
+            placeholderLabel = QLabel('No app is running')
+            placeholderLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+            self.setCentralWidget(placeholderLabel)
+        else:
+            self.readSpeedSeries = QLineSeries()
+            self.readSpeedSeries.setName('Read')
+            self.writeSpeedSeries = QLineSeries()
+            self.writeSpeedSeries.setName('Write')
+            self.speedCounter = 0
+            self.speedChart = QChart()
+            self.speedChart.addSeries(self.readSpeedSeries)
+            self.speedChart.addSeries(self.writeSpeedSeries)
+            self.speedChart.createDefaultAxes()
+            self.speedChart.axisX().setRange(0,20)
+            self.speedChart.axisY().setRange(0,20)
+            self.speedChartView = QChartView(self.speedChart)
+            self.setCentralWidget(self.speedChartView)
+
+    def onConnectionSpeedChanged(self, read, write):
+        self.speedLabel.setText('{:.1f} Bps read / {:.1f} Bps write'.format(read, write))
+        self.readSpeedSeries.append(self.speedCounter, read)
+        self.writeSpeedSeries.append(self.speedCounter, write)
+        self.speedCounter += 1
+        if self.speedCounter > 21:
+            self.speedChart.scroll(self.speedChart.plotArea().width() / 20,0)
+            self.readSpeedSeries.remove(0)
+            self.writeSpeedSeries.remove(0)
 
 
 if __name__ == '__main__':
