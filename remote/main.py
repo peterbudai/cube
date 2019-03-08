@@ -3,11 +3,10 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
-from PyQt5.QtChart import *
 import sys
 
 from connection import CubeConnection
-from system import CubeSystemWidget
+from system import CubeSystemWidget, CubeDynamicChart
 
 
 class CubeMainWindow(QMainWindow):
@@ -33,13 +32,8 @@ class CubeMainWindow(QMainWindow):
         toolbar.addAction(self.connect_bt)
         toolbar.addAction(self.disconnect)
 
-        self.speedLabel = QLabel('Not connected')
-        self.speedLabel.setFrameStyle(QFrame.Panel | QFrame.Sunken);
-        self.statusBar().setSizeGripEnabled(False)
-        self.statusBar().addWidget(self.speedLabel, 1)
-
         self.systemWidget = CubeSystemWidget(self)
-        self.addDockWidget(Qt.TopDockWidgetArea, self.systemWidget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.systemWidget)
         placeholderLabel = QLabel('No app is running')
         placeholderLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.setCentralWidget(placeholderLabel)
@@ -52,34 +46,19 @@ class CubeMainWindow(QMainWindow):
         self.connect_bt.setEnabled(state == CubeConnection.Disconnected)
         self.disconnect.setEnabled(state == CubeConnection.Connected)
         if state != CubeConnection.Connected:
-            self.speedLabel.setText('Not connected')
             placeholderLabel = QLabel('No app is running')
             placeholderLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
             self.setCentralWidget(placeholderLabel)
+            self.systemWidget.hide()
         else:
-            self.readSpeedSeries = QLineSeries()
-            self.readSpeedSeries.setName('Read')
-            self.writeSpeedSeries = QLineSeries()
-            self.writeSpeedSeries.setName('Write')
-            self.speedCounter = 0
-            self.speedChart = QChart()
-            self.speedChart.addSeries(self.readSpeedSeries)
-            self.speedChart.addSeries(self.writeSpeedSeries)
-            self.speedChart.createDefaultAxes()
-            self.speedChart.axisX().setRange(0,20)
-            self.speedChart.axisY().setRange(0,20)
-            self.speedChartView = QChartView(self.speedChart)
-            self.setCentralWidget(self.speedChartView)
+            self.speedChart = CubeDynamicChart('USART speed', 20)
+            self.speedChart.addSeries('Read ({:.1f} Bps)', 20, Qt.green, Qt.AlignLeft)
+            self.speedChart.addSeries('Write ({:.1f} Bps)', 20, Qt.red, Qt.AlignRight)
+            self.setCentralWidget(self.speedChart)
+            self.systemWidget.show()
 
     def onConnectionSpeedChanged(self, read, write):
-        self.speedLabel.setText('{:.1f} Bps read / {:.1f} Bps write'.format(read, write))
-        self.readSpeedSeries.append(self.speedCounter, read)
-        self.writeSpeedSeries.append(self.speedCounter, write)
-        self.speedCounter += 1
-        if self.speedCounter > 21:
-            self.speedChart.scroll(self.speedChart.plotArea().width() / 20,0)
-            self.readSpeedSeries.remove(0)
-            self.writeSpeedSeries.remove(0)
+        self.speedChart.appendSeries([read, write])
 
 
 if __name__ == '__main__':
